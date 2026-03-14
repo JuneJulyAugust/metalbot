@@ -1,0 +1,44 @@
+# macOS
+.DS_Store
+*.swp
+*~
+
+# Xcode
+.build/
+DerivedData/
+*.xcuserdata/
+*.xcworkspace/xcuserdata/
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+.swiftpm/
+Packages/
+Package.resolved
+
+# CocoaPods
+Pods/
+
+# Local env
+.zshrc
+.env
+.env.*
+
+# IDE
+.vscode/
+.idea/
+
+# Build artifacts
+*.o
+*.a
+*.dylib
+
+# Cursor
+.cursor/
