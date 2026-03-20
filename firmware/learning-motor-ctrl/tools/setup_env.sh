@@ -13,6 +13,9 @@ fi
 
 export PATH=$PATH:$SCRIPT_DIR/bin
 export ARDUINO_CONFIG_FILE=$SCRIPT_DIR/arduino-cli.yaml
+export ARDUINO_DIRECTORIES_DATA="$SCRIPT_DIR/arduino_data"
+export ARDUINO_DIRECTORIES_USER="$SCRIPT_DIR/arduino_data/user"
+export ARDUINO_DIRECTORIES_DOWNLOADS="$SCRIPT_DIR/arduino_data/staging"
 
 # Auto-install AVR core and Servo library if missing
 if [ ! -d "$SCRIPT_DIR/arduino_data/packages/arduino/hardware/avr" ]; then

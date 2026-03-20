@@ -34,24 +34,20 @@ The goal is to provide a clean, high-level mechanism to manage the Arduino and d
     - `stop_servo.sh`: Wrapper to compile and flash `servo_stop.ino`.
 4. **Create `README.md`**: Document the end-to-end setup, compile instructions, serial port configuration, and the location of downloaded Arduino tools and libraries (`~/.arduino15`).
 
-## Phase 4: Localize Arduino Environment (Pending)
-The goal is to decouple the project from the user's global `~/.arduino15` directory and store all Arduino toolchains, libraries, and board configurations directly within the `./arduino_demo` repository for better portability.
+## Phase 4: Localize Arduino Environment (Completed)
+The goal was to decouple the project from the user's global `~/.arduino15` directory and store all Arduino toolchains, libraries, and board configurations directly within the `./tools/arduino_data` directory for better portability.
 
-### Proposed Steps
-1. **Create Local Config**: Use `arduino-cli config init` to create a local `arduino-cli.yaml` in the project root.
-2. **Update Data Paths**: Modify `arduino-cli.yaml` to set `directories.data`, `directories.downloads`, and `directories.user` to point to a new local folder (e.g., `./arduino_data`).
-3. **Migrate Existing Files**: Move the existing contents of `~/.arduino15` into the new `./arduino_data` directory.
-4. **Update Scripts/Docs**: Ensure `setup_env.sh`, `run_servo.sh`, and `stop_servo.sh` pass the `--config-file arduino-cli.yaml` parameter or export the `ARDUINO_CONFIG_FILE` variable. Update `README.md` and `.gitignore` so we don't commit megabytes of toolchain binaries.
-5. **Clean up**: Remove the now-unused `~/.arduino15` directory.
+### Completed Steps
+1. **Create Local Config**: Initialized `arduino-cli.yaml` in `tools/`.
+2. **Update Data Paths**: Configured `arduino-cli.yaml` to point to `tools/arduino_data/`.
+3. **Migrate/Install Files**: Set up `setup_env.sh` to populate `tools/arduino_data/` locally.
+4. **Update Scripts/Docs**: Exported `ARDUINO_CONFIG_FILE` and `ARDUINO_DIRECTORIES_*` variables in `tools/common.sh` and `tools/setup_env.sh`.
 
-## Phase 5: Project Organization and Bootstrapping (Pending)
-The goal is to ensure the repository remains extremely lightweight while still containing the structural boundaries needed to seamlessly rebuild the heavy toolchain binaries on any new system.
+## Phase 5: Project Organization and Robustness (Completed)
+The goal was to ensure the repository remains lightweight and the scripts work reliably from any directory.
 
-### Proposed Steps
-1. **Clean up git tracking**: Currently, the `bin/arduino-cli` executable and the compiled `CH341SER` kernel driver objects are tracked. We will `git rm --cached` these heavy compiled artifacts.
-2. **Add structural `.gitkeep`s**: Create `.gitkeep` files in `bin/` and `arduino_data/` to track the directories without their contents. Update `.gitignore` to ignore the actual contents (`bin/*`, `arduino_data/*`) to prevent blobs in our history.
-3. **Enhance `setup_env.sh`**: Adjust the environment setup script to automatically execute the `curl` installer if `bin/arduino-cli` does not exist, and subsequently issue `arduino-cli core install` and `arduino-cli lib install` commands if the directories in `arduino_data/` are missing.
-
-### Verification Plan
-- `git status` should not track any compiled `.o`, `.ko`, or executable blob files.
-- Purging `bin/` and running `./setup_env.sh` successfully re-installs everything.
+### Completed Steps
+1. **Clean up git tracking**: Removed `bin/arduino-cli` and other heavy binaries from git.
+2. **Add structural `.gitkeep`s**: Maintained directory structure in `bin/` and `arduino_data/`.
+3. **Enhance `setup_env.sh`**: Automated the `arduino-cli` download and AVR toolchain/library installation.
+4. **Absolute Path Resolution**: Updated `tools/common.sh` and all `scripts/*.sh` to use absolute paths (`$SKETCHES_DIR`, `$TOOLS_DIR`) for robustness, allowing scripts to be executed from any current working directory.

@@ -2,9 +2,14 @@
 # Shared helpers for arduino-cli build/upload scripts.
 
 TOOLS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+FIRMWARE_ROOT="$(cd "$TOOLS_DIR/.." && pwd)"
+SKETCHES_DIR="$FIRMWARE_ROOT/sketches"
 
 export PATH="$PATH:$TOOLS_DIR/bin"
 export ARDUINO_CONFIG_FILE="$TOOLS_DIR/arduino-cli.yaml"
+export ARDUINO_DIRECTORIES_DATA="$TOOLS_DIR/arduino_data"
+export ARDUINO_DIRECTORIES_USER="$TOOLS_DIR/arduino_data/user"
+export ARDUINO_DIRECTORIES_DOWNLOADS="$TOOLS_DIR/arduino_data/staging"
 
 FQBN="arduino:avr:mega"
 

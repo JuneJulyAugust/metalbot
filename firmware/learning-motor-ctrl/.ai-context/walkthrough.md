@@ -164,15 +164,15 @@ chmod +x *.sh
 - The user can stop all movement cleanly by typing `./stop_servo.sh`.
 - Complete environment details are comprehensively documented in the `README.md`.
 
-## Step 4: Bootstrapping and Project Organization
-**Goal**: Remove heavy compilation binaries from Git and implement a fully automated bootstrapper for easy portability.
+## Step 5: Improve Robustness and Path Resolution
+**Goal**: Ensure all scripts work regardless of the current working directory by resolving absolute paths.
 
 **Actions**:
-Ran `git rm --cached` on all tracked executables and Kernel objects. Added `.gitkeep` placeholders to `bin/` and `arduino_data/` and ignored the directories in `.gitignore`.
-Upgraded `setup_env.sh` to automatically `curl` download `arduino-cli` and install the `avr` core and `Servo` library into `./arduino_data` if they are missing.
-Dynamically resolved shell paths within all scripts using `$BASH_SOURCE` to ensure identical behavior regardless of where the repository is cloned.
+Modified `tools/common.sh` and `tools/setup_env.sh` to export `ARDUINO_DIRECTORIES_DATA`, `ARDUINO_DIRECTORIES_USER`, and `ARDUINO_DIRECTORIES_DOWNLOADS` as absolute paths derived from the script's location.
+Modified all high-level scripts in `scripts/` to use an absolute `$SKETCHES_DIR` variable when calling `compile_and_upload`.
+Removed relative directory paths from `arduino-cli.yaml` to avoid conflicts with environment variables.
 
 **Results**:
-- The repository tracks zero binary objects, dramatically improving clone speeds.
-- Running `source setup_env.sh` completely reconstructs the local compiler toolchain flawlessly without any user input.
+- Scripts can now be executed from the project root (e.g., `bash scripts/run_servo.sh`) or from within the `scripts/` directory without path errors.
+- `arduino-cli` consistently uses the local `tools/arduino_data` directory regardless of the execution context.
 

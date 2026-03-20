@@ -32,35 +32,39 @@ The exploration code is now organized into logical subdirectories:
    source tools/setup_env.sh
    ```
 
-2. **Run Scripts** (from the `scripts/` directory):
+2. **Run Scripts**:
+   The scripts are designed to be run from any directory (e.g., project root or `scripts/`):
    ```bash
+   # From the project root:
+   bash scripts/run_servo.sh          # sweep between 50-130 degrees
+   bash scripts/run_motor.sh          # arm ESC, ramp forward/reverse 10%-40%
+   bash scripts/run_combined.sh       # full driving demo
+
+   # Or from the scripts directory:
    cd scripts
-   bash run_servo.sh          # sweep between 50-130 degrees
-   bash run_motor.sh          # arm ESC, ramp forward/reverse 10%-40%
-   bash run_combined.sh       # full driving demo
+   bash run_servo.sh
    ```
 
 3. **Emergency Stop**:
    ```bash
-   bash stop_motor.sh
-   bash stop_servo.sh
+   bash scripts/stop_motor.sh
+   bash scripts/stop_servo.sh
    ```
 
 4. **Serial Monitor**:
    ```bash
-   bash monitor.sh            # live serial output from Arduino (Ctrl+C to exit)
+   bash scripts/monitor.sh            # live serial output from Arduino (Ctrl+C to exit)
    ```
 
 ## Project Structure
 
 | Path | Description |
 |---|---|
-| `tools/common.sh` | Shared build/upload helpers |
-| `tools/setup_env.sh` | Bootstrap arduino-cli and AVR toolchain |
-| `scripts/monitor.sh` | Serial monitor (115200 baud) |
+| `tools/common.sh` | Shared build/upload helpers with absolute path resolution |
+| `tools/setup_env.sh` | Bootstrap arduino-cli and AVR toolchain locally |
+| `tools/arduino-cli.yaml` | Compiler configuration (points to local `arduino_data`) |
+| `tools/arduino_data/` | Local toolchain, cores, and libraries (git-ignored) |
+| `scripts/` | Shell scripts to compile/flash specific sketches from any PWD |
 | `sketches/` | Arduino `.ino` project folders |
-| `scripts/` | Shell scripts to compile/flash specific sketches |
 | `.ai-context/` | Hardware specs and learning context |
-| `tools/arduino-cli.yaml` | Compiler configuration |
-| `tools/arduino_data/` | Local toolchain (git-ignored) |
 | `images/` | Hardware wiring reference photos |
