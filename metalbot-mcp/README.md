@@ -1,0 +1,60 @@
+# metalbot-mcp
+
+Raspberry Pi 4B bridge application for `metalbot`.
+
+This application acts as the "MCP High-Level" bridge between the iPhone (Brain) and the Arduino (MCP Low-Level). It provides a real-time TUI dashboard for monitoring communication health and manual control inputs.
+
+## Features
+
+- **Event-driven Networking:** High-performance UDP communication using `Asio`.
+- **Dashboard UI:** Terminal UI built with `FTXUI` featuring bi-directional car-style meters.
+- **Health Monitoring:** 1.5-second watchdog timeout for connection status tracking.
+- **Identity Display:** Real-time display of local (Pi) and remote (iPhone) network identities.
+
+## Requirements
+
+### Hardware
+- Raspberry Pi 4B.
+- Connected Arduino (Low-level MCP) via Serial.
+
+### Software
+- C++17 compiler (`g++`).
+- `CMake` (3.16+).
+- `libasio-dev` (networking library).
+- `FTXUI` (cloned as a git submodule or in the project root).
+
+## Installation
+
+1. Install dependencies on the Pi:
+   ```bash
+   sudo apt update && sudo apt install -y cmake libasio-dev
+   ```
+2. Clone `FTXUI` in the project root:
+   ```bash
+   git clone https://github.com/ArthurSonzogni/FTXUI.git
+   ```
+
+## Development & Deployment
+
+Use the provided `deploy.sh` script to sync and build on your Raspberry Pi:
+
+```bash
+cd metalbot-mcp
+chmod +x deploy.sh
+./deploy.sh pi  # Replace 'pi' with your Pi's IP or SSH alias
+```
+
+## Running
+
+Run the built executable on the Pi:
+```bash
+~/metalbot-mcp/build/metalbot-mcp
+```
+
+## Architecture
+
+```
+iPhone (Brain) <---- UDP (1.0 Hz HB) ----> Pi (MCP Bridge) <---- Serial ----> Arduino (Low-level)
+```
+- **Port:** 8888 (UDP).
+- **Timeout:** 1.5s Watchdog.

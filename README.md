@@ -4,7 +4,7 @@
 
 The name comes from Apple Metal: the app will rely on high-performance iPhone GPU/compute paths for perception over time.
 
-The iPhone runs perception, estimation, and high-level control. STM32 acts as MCP (motor/control processor) for low-level actuation and watchdog behavior.
+The iPhone runs perception, estimation, and high-level control. Raspberry Pi 4B and Arduino act as MCP (motor/control processor) for low-level actuation and watchdog behavior.
 
 ## Product Direction
 
@@ -15,6 +15,8 @@ The iPhone runs perception, estimation, and high-level control. STM32 acts as MC
    - speed planner + feedback control (reach target speed, then keep it)
    - straight driving by yaw-rate hold
    - planner-triggered stop when obstacle points block future path
+   - iPhone to Raspberry Pi 4B command bridge (via BLE/Wi-Fi)
+   - Raspberry Pi to Arduino serial bridge for PWM/servo control
 2. **MVP2 (parallel): RGB to mono depth prototype**
    - camera stream + Core ML depth inference on iPhone
 3. **MVP3 (future): sparse LiDAR + RGB depth completion**
@@ -24,7 +26,7 @@ The iPhone runs perception, estimation, and high-level control. STM32 acts as MC
 
 - iPhone 13 Pro / iPhone 13 Pro Max
 - RC chassis with steering and throttle actuation
-- STM32 MCP over BLE or Wi-Fi (both will be tested)
+- Raspberry Pi 4B + Arduino MCP over BLE or Wi-Fi (both will be tested)
 - Flat indoor floor for MVP1
 - Vehicle speed target range (initial): `0.1` to `2.0` m/s
 
