@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0] - 2026-03-20
+
+### Added
+- Robust USB-Serial communication with Arduino (`asio::serial_port`).
+- Real-time Arduino command feedback (ACK logging) in the dashboard.
+- Automatic serial reconnection logic with error handling.
+- Arduino boot synchronization (3.5s delay) and serial buffer flushing.
+- Non-blocking I/O for smooth UI updates during serial operations.
+
 ## [0.1.0] - 2026-03-19
 
 ### Added
