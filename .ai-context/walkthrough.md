@@ -58,3 +58,19 @@ Add entries only after real coding, integration, or testing work reveals valuabl
 - **Resolution:** Set `Debug` to `-Onone` + `singlefile` and `Release` to `-O` + `wholemodule`; documented `./build.sh deploy` and `./build.sh --release deploy` with manual `xcodebuild` equivalents.
 - **Validation:** Verified settings via `xcodebuild -showBuildSettings` and confirmed successful `Release` build and deploy on device.
 - **Follow-up:** Add quantitative frame-time benchmarks (Debug vs Release) after planner features increase CPU load.
+
+### 2026-03-19 - MVP1 Step 2: Raspberry Pi MCP Bridge and iOS Diagnostics UI
+
+- **Context:** Transition from STM32 to Raspberry Pi 4B + Arduino architecture for motor control.
+- **What we built/tested:**
+    - Developed `metalbot-mcp`: a C++17 application on Raspberry Pi using `Asio` for event-driven UDP networking and `FTXUI` for a TUI dashboard.
+    - Implemented bi-directional UDP heartbeats (1Hz) between iPhone and Pi with a synchronized 1.5-second connection timeout.
+    - Built a car-style TUI on the Pi with stationary, bi-directional meters for steering/motor power (Blue/Left for negative, Green/Right for positive).
+    - Added "MCP Diagnostics" view on iOS with real-time status, network metrics (Sent/Received counts/times), and manual sliders for remote control.
+    - Fixed iOS IP discovery and macOS-specific API build issues.
+- **Issue observed:** (1) Layout jitter in TUI when meters were growing dynamically. (2) Heartbeat RX counter on Pi was erroneously counting control commands. (3) iOS build error on `Host.current().localizedName`.
+- **Root cause:** (1) Flexible-width elements caused the center point to shift; fixed with explicit container sizing. (2) Packet parsing didn't distinguish by prefix; fixed with `hb_iphone:`/`cmd:` separation. (3) `Host` API is macOS-only; replaced with `UIDevice`.
+- **Resolution:** Refined TUI layout for absolute stability, hardened packet parsing, and implemented iOS device discovery using UIKit.
+- **Validation:** Smooth, jitter-free dashboard on Pi; iPhone shows "Connected" status based on Pi heartbeats; 1.5s timeout works bi-directionally.
+- **Follow-up:** Next is the Serial bridge between the Raspberry Pi and Arduino for real-world PWM control.
+

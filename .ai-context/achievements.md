@@ -13,6 +13,7 @@ This file tracks concrete task outcomes and their supporting artifacts.
 | Date | Task | Outcome | Evidence |
 |---|---|---|---|
 | 2026-03-14 | MVP1 `1.1.1` + `1.1.2` | iOS app bring-up + LiDAR point-cloud capture and RGB debug display completed | `assets/achievements/mvp1/2026-03-14_lidar-pointcloud-rgb-capture-display.png` |
+| 2026-03-19 | MVP1 `1.4.1` + `1.4.2` | Bi-directional MCP Bridge (RPi + iOS) with 1.5s timeout and bi-directional TUI dashboard | (Pending Image) |
 
 ## App Branding Assets
 

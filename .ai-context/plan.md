@@ -17,7 +17,7 @@ This plan is high-level and stable for now. We refine internals only after imple
 
 - iPhone 13 Pro / iPhone 13 Pro Max.
 - RC chassis with steering/throttle actuation.
-- STM32 MCP for low-level command execution.
+- Raspberry Pi 4B + Arduino MCP for high-level communication and low-level command execution.
 
 ### 1.3 Environment assumptions
 
@@ -41,7 +41,7 @@ This plan is high-level and stable for now. We refine internals only after imple
 - Velocity estimation (iPhone IMU first).
 - Speed planner and control.
 - Planner-triggered stop on blocked future path.
-- iPhone to STM32 command path.
+- iPhone to Raspberry Pi command path.
 - Configurable obstacle-stop policy.
 
 ### 2.2 MVP2 (parallel): RGB to mono-depth prototype
@@ -99,9 +99,12 @@ This plan is high-level and stable for now. We refine internals only after imple
 
 #### 3.5.1 MCP interface strategy
 
-- Command protocol includes bounded actuator values, sequence, and timestamp.
-- Transport decision is pending: BLE vs Wi-Fi; both will be prototyped.
-- STM32 PWM control is in-progress and external collaboration is ongoing.
+- Command protocol: UDP-based, bi-directional heartbeats (1.0 Hz) and asynchronous control commands.
+- Transport: Wi-Fi (UDP) is the primary transport for initial testing; BLE remains a prototype candidate.
+- Raspberry Pi 4B: Acts as the high-level bridge ("MCP High-Level"), running an event-driven C++ application (Asio) with a TUI dashboard (FTXUI).
+- Arduino: Handles low-level PWM/servo control ("MCP Low-Level") via Serial bridge from the Pi.
+- Safety: 1.5-second connection timeout enforced on both iPhone (Brain) and Raspberry Pi (MCP).
+- Diagnostics: Real-time dashboard on Pi and dedicated "MCP Diagnostics" view on iOS.
 
 ## 4. Engineering Invariants
 

@@ -46,18 +46,22 @@ This backlog is hierarchical and execution-focused. Complete MVP1 before expandi
 - [ ] Ensure planner stop signal has higher priority than normal speed command.
 - [ ] Ensure `estop` command path has strict priority over all drive commands.
 
-### 1.4 STM32 MCP interface
+### 1.4 Raspberry Pi + Arduino MCP interface
 
 #### 1.4.1 Protocol and transport experiments
 
-- [ ] Define protocol v1 fields (`throttle`, `steer`, `brake`, `estop`, `seq`, `ts`).
-- [ ] Implement BLE adapter prototype.
-- [ ] Implement Wi-Fi adapter prototype.
+- [x] Define protocol v1 fields (`hb_iphone`, `hb_pi`, `cmd:s=x,m=y`).
+- [x] Implement Wi-Fi (UDP) adapter on Raspberry Pi 4B with bi-directional heartbeat.
+- [x] Implement TUI dashboard on Pi (FTXUI) with stationary bi-directional meters.
+- [ ] Implement Serial bridge between Raspberry Pi and Arduino.
+- [ ] Implement Arduino firmware for PWM/servo command execution.
 
 #### 1.4.2 MCP integration contract
 
-- [ ] Define iPhone heartbeat and timeout behavior.
-- [ ] Define STM32 watchdog and link-loss safety behavior contract.
+- [x] Implement iPhone heartbeat (1Hz) and 1.5s timeout logic.
+- [x] Implement Raspberry Pi heartbeat (1Hz) and 1.5s timeout logic.
+- [x] Implement "MCP Diagnostics" view on iOS for real-time monitoring.
+- [ ] Define Arduino/Raspberry Pi watchdog and link-loss safety behavior contract.
 
 ### 1.5 Validation and exit criteria
 
