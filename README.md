@@ -1,8 +1,14 @@
-# metalbot
+<!-- markdownlint-disable MD033 -->
+<h1 align="center">metalbot</h1>
 
-![metalbot app icon](assets/design/ios/app-icon/metalbot_icon_source.png)
+<p align="center">
+  <img src="assets/design/ios/app-icon/metalbot_icon_source.png" alt="metalbot app icon" width="240" />
+</p>
 
-`metalbot` is an iPhone-first autonomous RC car project.
+<p align="center">
+  iPhone-first autonomous RC car project
+</p>
+<!-- markdownlint-enable MD033 -->
 
 The name comes from Apple Metal: the app will rely on high-performance iPhone GPU/compute paths for perception over time.
 
