@@ -36,11 +36,10 @@ struct ARKitPoseView: View {
                 .rotationEffect(isPortrait ? .degrees(90) : .degrees(0))
                 .position(x: screenWidth / 2, y: screenHeight / 2)
         }
-        .ignoresSafeArea() // Take over the entire physical screen
-        .navigationBarHidden(true) // Hide the system nav bar so it doesn't look weird when rotated
-        .onDisappear {
-            viewModel.stop()
-        }
+        .ignoresSafeArea()
+        .navigationBarHidden(true)
+        .onAppear { viewModel.migrateLegacyMap() }
+        .onDisappear { viewModel.stop() }
         .alert(isPresented: .constant(viewModel.errorMsg != nil)) {
             Alert(
                 title: Text("ARKit Error"),
@@ -54,6 +53,9 @@ struct ARKitPoseView: View {
             if viewModel.isTracking {
                 updateAutoZoom(size: canvasSize)
             }
+        }
+        .sheet(isPresented: $viewModel.showMapManager) {
+            MapManagerView(viewModel: viewModel)
         }
     }
     
@@ -75,7 +77,7 @@ struct ARKitPoseView: View {
             // RIGHT: Thumb Controls
             controlsPanel
                 .padding(.trailing, rightPad)
-                .frame(width: 100 + rightPad)
+                .frame(width: 76 + rightPad)
                 .background(Color(.systemBackground).shadow(radius: 2))
                 .zIndex(1)
         }
@@ -159,13 +161,24 @@ struct ARKitPoseView: View {
             }
             .foregroundColor(viewModel.isUsingSceneDepth ? .cyan : .secondary)
 
-            // World Map Status
+            // Active Map Status
             HStack(spacing: 4) {
-                Image(systemName: viewModel.hasWorldMap ? "map.fill" : "map")
-                Text(viewModel.hasWorldMap ? "Map loaded" : "No map")
-                    .font(.caption)
+                Image(systemName: viewModel.activeMapName != nil ? "map.fill" : "map")
+                if let name = viewModel.activeMapName {
+                    Text(name)
+                        .font(.caption.bold())
+                        .lineLimit(1)
+                } else if let selID = viewModel.selectedMapID,
+                          let sel = viewModel.savedMaps.first(where: { $0.id == selID }) {
+                    Text("→ \(sel.name)")
+                        .font(.caption)
+                        .lineLimit(1)
+                } else {
+                    Text("No map")
+                        .font(.caption)
+                }
             }
-            .foregroundColor(viewModel.hasWorldMap ? .green : .secondary)
+            .foregroundColor(viewModel.activeMapName != nil ? .green : .secondary)
 
             Spacer()
 
@@ -189,54 +202,26 @@ struct ARKitPoseView: View {
     }
 
     private var controlsPanel: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 12) {
             Spacer()
 
-            // Save World Map
-            Button(action: { viewModel.saveWorldMap() }) {
-                Image(systemName: "square.and.arrow.down")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundColor(.blue)
-                    .frame(width: 52, height: 52)
-                    .background(Color(.systemGray5))
-                    .clipShape(Circle())
+            // Map Manager
+            compactButton(icon: "map", color: .blue) {
+                viewModel.showMapManager = true
             }
-
-            // Delete World Map
-            Button(action: { viewModel.deleteWorldMap() }) {
-                Image(systemName: "map.fill")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundColor(viewModel.hasWorldMap ? .orange : .gray)
-                    .frame(width: 52, height: 52)
-                    .background(Color(.systemGray5))
-                    .clipShape(Circle())
-            }
-            .disabled(!viewModel.hasWorldMap)
 
             // Recenter / Fit View
-            Button(action: { updateAutoZoom(size: canvasSize) }) {
-                Image(systemName: "location.viewfinder")
-                    .font(.system(size: 24, weight: .bold))
-                    .foregroundColor(.primary)
-                    .frame(width: 60, height: 60)
-                    .background(Color(.systemGray5))
-                    .clipShape(Circle())
+            compactButton(icon: "location.viewfinder", color: .primary) {
+                updateAutoZoom(size: canvasSize)
             }
 
-            // Clear Data
-            Button(action: {
+            // Clear Trajectory
+            compactButton(icon: "trash", color: .red) {
                 viewModel.clear()
                 updateAutoZoom(size: canvasSize)
-            }) {
-                Image(systemName: "trash.fill")
-                    .font(.system(size: 24, weight: .bold))
-                    .foregroundColor(.red)
-                    .frame(width: 60, height: 60)
-                    .background(Color(.systemGray5))
-                    .clipShape(Circle())
             }
 
-            // Start / Stop
+            // Start / Stop (larger)
             Button(action: {
                 if viewModel.isTracking {
                     viewModel.stop()
@@ -245,17 +230,28 @@ struct ARKitPoseView: View {
                 }
             }) {
                 Image(systemName: viewModel.isTracking ? "stop.fill" : "play.fill")
-                    .font(.system(size: 32, weight: .bold))
+                    .font(.system(size: 24, weight: .bold))
                     .foregroundColor(.white)
-                    .frame(width: 72, height: 72)
+                    .frame(width: 56, height: 56)
                     .background(viewModel.isTracking ? Color.red : Color.blue)
                     .clipShape(Circle())
-                    .shadow(radius: 4)
+                    .shadow(radius: 3)
             }
 
             Spacer()
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, 10)
+    }
+
+    private func compactButton(icon: String, color: Color, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(color)
+                .frame(width: 40, height: 40)
+                .background(Color(.systemGray5))
+                .clipShape(Circle())
+        }
     }
     
     private var mapCanvas: some View {

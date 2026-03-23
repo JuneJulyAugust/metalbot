@@ -18,6 +18,16 @@ struct PoseEntry: Identifiable {
     let confidence: Float
 }
 
+/// Metadata for a saved ARWorldMap.
+struct WorldMapEntry: Identifiable, Codable {
+    let id: UUID
+    let name: String
+    let date: Date
+    let anchorCount: Int
+    /// Filename on disk (without directory).
+    let filename: String
+}
+
 // MARK: - Yaw Extraction (gimbal-safe)
 
 /// Extract yaw (rotation about gravity/Y-axis) from a 4×4 transform using atan2.
@@ -50,27 +60,48 @@ final class ARKitPoseViewModel: NSObject, ObservableObject, ARSessionDelegate {
     /// Whether relocalization is in progress after an interruption.
     @Published var isRelocalizing: Bool = false
 
-    /// Whether an ARWorldMap is loaded for drift correction.
-    @Published var hasWorldMap: Bool = false
+    // MARK: - World Map Management
+
+    /// All saved world maps.
+    @Published var savedMaps: [WorldMapEntry] = []
+
+    /// Currently selected map ID to load on next start. nil = no map.
+    @Published var selectedMapID: UUID? = nil
+
+    /// Whether a map was loaded for the current session.
+    @Published var activeMapName: String? = nil
+
+    /// Whether a map save operation is in progress.
+    @Published var isSavingMap: Bool = false
+
+    /// Whether the map management sheet is presented.
+    @Published var showMapManager: Bool = false
 
     private let arSession = ARSession()
     private var lastRecordedTime: TimeInterval = 0
     private let recordInterval: TimeInterval = 0.1 // 10 Hz
 
     /// Dedicated high-priority queue for ARSession delegate callbacks.
-    /// Prevents frame processing from contending with UI layout on main thread.
     private let frameQueue = DispatchQueue(label: "com.metalbot.arkit.pose", qos: .userInitiated)
 
-    /// Path for persisting the ARWorldMap to disk.
-    private var worldMapURL: URL {
+    /// Directory for storing world maps.
+    private var mapsDirectory: URL {
         let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-        return docs.appendingPathComponent("metalbot_worldmap.arexperience")
+        let dir = docs.appendingPathComponent("worldmaps", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
+    }
+
+    /// Index file for map metadata.
+    private var indexURL: URL {
+        mapsDirectory.appendingPathComponent("map_index.json")
     }
 
     override init() {
         super.init()
         arSession.delegate = self
         arSession.delegateQueue = frameQueue
+        loadMapIndex()
     }
 
     // MARK: - Session Lifecycle
@@ -83,16 +114,20 @@ final class ARKitPoseViewModel: NSObject, ObservableObject, ARSessionDelegate {
 
         let config = makeTrackingConfiguration()
 
-        // Attempt to load a previously saved ARWorldMap for relocalization.
-        if let savedMap = loadWorldMap() {
+        // Load selected world map if one is chosen.
+        if let mapID = selectedMapID,
+           let entry = savedMaps.first(where: { $0.id == mapID }),
+           let savedMap = loadWorldMap(filename: entry.filename) {
             config.initialWorldMap = savedMap
-            // Keep existing anchors from the map for relocalization.
             arSession.run(config, options: [.resetTracking])
             DispatchQueue.main.async {
-                self.hasWorldMap = true
+                self.activeMapName = entry.name
             }
         } else {
             arSession.run(config, options: [.resetTracking, .removeExistingAnchors])
+            DispatchQueue.main.async {
+                self.activeMapName = nil
+            }
         }
 
         DispatchQueue.main.async {
@@ -122,84 +157,168 @@ final class ARKitPoseViewModel: NSObject, ObservableObject, ARSessionDelegate {
         }
     }
 
-    // MARK: - ARWorldMap Persistence
+    // MARK: - World Map Persistence
 
-    /// Save the current world map for future relocalization.
-    func saveWorldMap() {
+    /// Save the current world map with a given name.
+    func saveWorldMap(name: String) {
+        DispatchQueue.main.async { self.isSavingMap = true }
+
         arSession.getCurrentWorldMap { [weak self] worldMap, error in
-            guard let self, let worldMap else {
-                if let error {
-                    print("ARWorldMap save failed: \(error.localizedDescription)")
+            guard let self else { return }
+
+            defer {
+                DispatchQueue.main.async { self.isSavingMap = false }
+            }
+
+            guard let worldMap else {
+                DispatchQueue.main.async {
+                    self.errorMsg = error?.localizedDescription ?? "Failed to capture world map"
                 }
                 return
             }
+
             do {
                 let data = try NSKeyedArchiver.archivedData(
                     withRootObject: worldMap,
                     requiringSecureCoding: true
                 )
-                try data.write(to: self.worldMapURL, options: .atomic)
-                print("ARWorldMap saved (\(worldMap.anchors.count) anchors)")
+                let id = UUID()
+                let filename = "\(id.uuidString).arexperience"
+                let fileURL = self.mapsDirectory.appendingPathComponent(filename)
+                try data.write(to: fileURL, options: .atomic)
+
+                let entry = WorldMapEntry(
+                    id: id,
+                    name: name,
+                    date: Date(),
+                    anchorCount: worldMap.anchors.count,
+                    filename: filename
+                )
+
+                DispatchQueue.main.async {
+                    self.savedMaps.append(entry)
+                    self.selectedMapID = id
+                    self.saveMapIndex()
+                }
             } catch {
-                print("ARWorldMap archive failed: \(error.localizedDescription)")
+                DispatchQueue.main.async {
+                    self.errorMsg = "Map save failed: \(error.localizedDescription)"
+                }
             }
         }
     }
 
-    /// Delete the saved world map.
-    func deleteWorldMap() {
-        try? FileManager.default.removeItem(at: worldMapURL)
-        DispatchQueue.main.async {
-            self.hasWorldMap = false
+    /// Delete a saved world map by ID.
+    func deleteMap(id: UUID) {
+        guard let index = savedMaps.firstIndex(where: { $0.id == id }) else { return }
+        let entry = savedMaps[index]
+        let fileURL = mapsDirectory.appendingPathComponent(entry.filename)
+        try? FileManager.default.removeItem(at: fileURL)
+        savedMaps.remove(at: index)
+        if selectedMapID == id {
+            selectedMapID = nil
+            activeMapName = nil
         }
+        saveMapIndex()
     }
 
-    private func loadWorldMap() -> ARWorldMap? {
-        guard FileManager.default.fileExists(atPath: worldMapURL.path) else { return nil }
+    /// Delete all saved maps.
+    func deleteAllMaps() {
+        for entry in savedMaps {
+            let fileURL = mapsDirectory.appendingPathComponent(entry.filename)
+            try? FileManager.default.removeItem(at: fileURL)
+        }
+        savedMaps.removeAll()
+        selectedMapID = nil
+        activeMapName = nil
+        saveMapIndex()
+    }
+
+    /// Deselect the current map (start next session without a map).
+    func deselectMap() {
+        selectedMapID = nil
+    }
+
+    private func loadWorldMap(filename: String) -> ARWorldMap? {
+        let fileURL = mapsDirectory.appendingPathComponent(filename)
+        guard FileManager.default.fileExists(atPath: fileURL.path) else { return nil }
         do {
-            let data = try Data(contentsOf: worldMapURL)
-            let map = try NSKeyedUnarchiver.unarchivedObject(ofClass: ARWorldMap.self, from: data)
-            return map
+            let data = try Data(contentsOf: fileURL)
+            return try NSKeyedUnarchiver.unarchivedObject(ofClass: ARWorldMap.self, from: data)
         } catch {
             print("ARWorldMap load failed: \(error.localizedDescription)")
             return nil
         }
     }
 
+    // MARK: - Map Index Persistence
+
+    private func loadMapIndex() {
+        guard FileManager.default.fileExists(atPath: indexURL.path) else { return }
+        do {
+            let data = try Data(contentsOf: indexURL)
+            let decoded = try JSONDecoder().decode(MapIndex.self, from: data)
+            savedMaps = decoded.maps
+            selectedMapID = decoded.selectedID
+        } catch {
+            print("Map index load failed: \(error.localizedDescription)")
+        }
+    }
+
+    private func saveMapIndex() {
+        let index = MapIndex(maps: savedMaps, selectedID: selectedMapID)
+        do {
+            let data = try JSONEncoder().encode(index)
+            try data.write(to: indexURL, options: .atomic)
+        } catch {
+            print("Map index save failed: \(error.localizedDescription)")
+        }
+    }
+
+    /// Migrate legacy single-file map if it exists.
+    func migrateLegacyMap() {
+        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let legacy = docs.appendingPathComponent("metalbot_worldmap.arexperience")
+        guard FileManager.default.fileExists(atPath: legacy.path) else { return }
+
+        let id = UUID()
+        let filename = "\(id.uuidString).arexperience"
+        let dest = mapsDirectory.appendingPathComponent(filename)
+        do {
+            try FileManager.default.moveItem(at: legacy, to: dest)
+            let entry = WorldMapEntry(id: id, name: "Legacy Map", date: Date(), anchorCount: 0, filename: filename)
+            savedMaps.append(entry)
+            selectedMapID = id
+            saveMapIndex()
+        } catch {
+            print("Legacy map migration failed: \(error.localizedDescription)")
+        }
+    }
+
+    private struct MapIndex: Codable {
+        let maps: [WorldMapEntry]
+        let selectedID: UUID?
+    }
+
     // MARK: - Configuration
 
     private func makeTrackingConfiguration() -> ARWorldTrackingConfiguration {
         let config = ARWorldTrackingConfiguration()
-
-        // Align to gravity only (Y up, -Z is initial camera forward)
         config.worldAlignment = .gravity
 
-        // --- Accuracy Enhancements ---
-
-        // 1. LiDAR Scene Depth — constrains scale drift.
         if ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth) {
             config.frameSemantics.insert(.sceneDepth)
         }
-
-        // 2. Smoothed Scene Depth — temporal averaging for mesh quality.
-        //    Better mesh quality indirectly improves tracking stability.
         if ARWorldTrackingConfiguration.supportsFrameSemantics(.smoothedSceneDepth) {
             config.frameSemantics.insert(.smoothedSceneDepth)
         }
-
-        // 3. Scene Reconstruction — persistent meshing for loop closure.
         if ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh) {
             config.sceneReconstruction = .mesh
         }
 
-        // 4. Plane Detection (Horizontal AND Vertical).
-        //    Walls and floors give ARKit continuous structural anchors.
         config.planeDetection = [.horizontal, .vertical]
-
-        // 5. Environment Texturing — builds a comprehensive feature map.
         config.environmentTexturing = .automatic
 
-        // 6. Max video resolution — more VIO features.
         if let highResFormat = ARWorldTrackingConfiguration.supportedVideoFormats.max(by: {
             $0.imageResolution.width * $0.imageResolution.height <
             $1.imageResolution.width * $1.imageResolution.height
@@ -207,9 +326,6 @@ final class ARKitPoseViewModel: NSObject, ObservableObject, ARSessionDelegate {
             config.videoFormat = highResFormat
         }
 
-        // 7. Reference image detection — for drift-correcting visual markers.
-        //    If reference images exist in the asset catalog, ARKit will auto-detect them
-        //    and create ARImageAnchors, tightening position estimates near markers.
         if let referenceImages = ARReferenceImage.referenceImages(
             inGroupNamed: "ARReferenceImages",
             bundle: nil
@@ -222,7 +338,6 @@ final class ARKitPoseViewModel: NSObject, ObservableObject, ARSessionDelegate {
 
     // MARK: - Tracking Confidence
 
-    /// Compute a 0–1 confidence score from tracking state and sensor availability.
     private func computeConfidence(state: ARCamera.TrackingState, hasDepth: Bool) -> Float {
         switch state {
         case .notAvailable:
@@ -236,7 +351,6 @@ final class ARKitPoseViewModel: NSObject, ObservableObject, ARSessionDelegate {
             case .insufficientFeatures: base = 0.25
             @unknown default:       base = 0.2
             }
-            // LiDAR provides a boost even in limited states.
             return hasDepth ? min(base + 0.2, 0.6) : base
         case .normal:
             return hasDepth ? 1.0 : 0.8
@@ -251,16 +365,10 @@ final class ARKitPoseViewModel: NSObject, ObservableObject, ARSessionDelegate {
         let state = frame.camera.trackingState
         let hasDepth = frame.sceneDepth != nil
 
-        // Map ARKit coordinates to Robot Frame:
-        // ARKit: -Z is Initial Forward, +X is Right, +Y is Up
-        // Robot: +X is Forward, +Z is Right, +Y is Up
         let robotX = -transform.columns.3.z
         let robotY = transform.columns.3.y
         let robotZ = transform.columns.3.x
-
-        // Gimbal-safe yaw extraction using atan2 instead of eulerAngles.
         let robotYaw = extractGimbalSafeYaw(from: transform)
-
         let confidence = computeConfidence(state: state, hasDepth: hasDepth)
 
         let entry = PoseEntry(
@@ -294,7 +402,6 @@ final class ARKitPoseViewModel: NSObject, ObservableObject, ARSessionDelegate {
                 self.isRelocalizing = false
             }
 
-            // Record trajectory at 10Hz, only when tracking is Normal.
             if state == .normal {
                 if timestamp - self.lastRecordedTime >= self.recordInterval {
                     self.poses.append(entry)
@@ -321,9 +428,6 @@ final class ARKitPoseViewModel: NSObject, ObservableObject, ARSessionDelegate {
         }
     }
 
-    /// Allow ARKit to attempt relocalization after an interruption.
-    /// This is critical for a moving robot — without it, all future poses
-    /// would be offset by the drift accumulated during the interruption.
     func sessionShouldAttemptRelocalization(_ session: ARSession) -> Bool {
         true
     }
@@ -337,7 +441,7 @@ final class ARKitPoseViewModel: NSObject, ObservableObject, ARSessionDelegate {
         }
     }
 
-    // MARK: - ARSessionDelegate — Anchor Detection (Reference Markers)
+    // MARK: - ARSessionDelegate — Anchor Detection
 
     func session(_ session: ARSession, didAdd anchors: [ARAnchor]) {
         for anchor in anchors {

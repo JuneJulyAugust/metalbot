@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - ARReferenceImage detection for visual marker drift correction.
   - Tracking confidence field (`PoseEntry.confidence`) for planner quality gating.
   - Updated `ARKitPoseView` with interruption warnings, confidence display, and world map controls.
+- **World Map Management UI**:
+  - Implemented named multiple map storage (`WorldMapEntry`) with JSON metadata persistence.
+  - Added `MapManagerView` sheet for saving, selecting, and deleting specific maps.
+  - Redesigned `ARKitPoseView` controls with smaller 40pt icon buttons and a narrower right panel.
+  - Active map name and selection status now clearly displayed in the data panel.
 
 ## [0.5.0-dev] - 2026-03-23
 
