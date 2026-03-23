@@ -50,3 +50,6 @@ targets:
       - path: Tests
     dependencies:
       - target: metalbot
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: true

@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0-dev] - 2026-03-23
+
+### Changed
+- **Architectural Refactoring (SRP & DIP)**: Broke monolithic `main.cpp` into 5 discrete modules: `protocol` (pure logic), `mcp_status` (thread-safe data), `network_server`, `serial_forwarder`, and `dashboard`.
+- Global mutable state replaced with isolated `MCPStatus` container using a lock-free snapshot pattern for UI rendering.
+
+### Added
+- Comprehensive 18-case GoogleTest suite (`protocol_test.cpp`) covering round-trip serialization without hardware dependencies.
+- Added CMake test target allowing local macOS compilation of pure C++ protocol logic.
+
 ## [0.2.0] - 2026-03-20
 
 ### Added
