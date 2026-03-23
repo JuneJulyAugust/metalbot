@@ -23,16 +23,14 @@ struct PoseEntry: Identifiable {
 /// Extract yaw (rotation about gravity/Y-axis) from a 4×4 transform using atan2.
 /// This avoids the ±π discontinuities and gimbal lock of Euler angles.
 ///
-/// For ARKit .gravity alignment:
-///   Forward direction in world = -Z of the camera.
-///   The camera's -Z axis in world coordinates is: -R[2] = (-R[0][2], -R[1][2], -R[2][2])
-///   Yaw = atan2(-R[0][2], -R[2][2]) → maps camera forward projected onto the XZ plane.
+/// Derivation: For ARKit `.gravity` alignment, a pure Y-rotation by angle θ gives
+/// `columns.2 = (sin(θ), 0, cos(θ))` (the camera's backward/+Z axis in world space).
+/// Therefore `atan2(columns.2.x, columns.2.z) = atan2(sin(θ), cos(θ)) = θ`,
+/// matching `eulerAngles.y` without gimbal lock at extreme pitch.
 func extractGimbalSafeYaw(from transform: simd_float4x4) -> Float {
-    // Camera's -Z (forward) direction in world space
-    let forwardX = -transform.columns.2.x
-    let forwardZ = -transform.columns.2.z
-    // atan2 over the XZ plane: angle from -Z axis (initial forward)
-    return atan2(forwardX, forwardZ)
+    // Use camera's +Z (backward) axis projected onto the XZ plane.
+    // This directly recovers the Y-rotation angle θ.
+    return atan2(transform.columns.2.x, transform.columns.2.z)
 }
 
 // MARK: - ViewModel
