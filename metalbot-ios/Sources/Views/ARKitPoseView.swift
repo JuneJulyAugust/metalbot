@@ -123,39 +123,98 @@ struct ARKitPoseView: View {
             // Tracking State Display
             HStack(spacing: 4) {
                 Circle()
-                    .fill(viewModel.trackingState == .normal ? Color.green : Color.orange)
+                    .fill(trackingStateColor)
                     .frame(width: 8, height: 8)
                 Text(viewModel.trackingReason)
                     .font(.caption.bold())
-                    .foregroundColor(viewModel.trackingState == .normal ? .green : .orange)
+                    .foregroundColor(trackingStateColor)
             }
-            
-            // LiDAR Status Display
+
+            // Interruption / Relocalization warning
+            if viewModel.isInterrupted {
+                HStack(spacing: 4) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                    Text("INTERRUPTED")
+                        .font(.caption.bold())
+                }
+                .foregroundColor(.red)
+            } else if viewModel.isRelocalizing {
+                HStack(spacing: 4) {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                    Text("Relocalizing...")
+                        .font(.caption.bold())
+                }
+                .foregroundColor(.orange)
+            }
+
+            // Confidence + LiDAR row
             HStack(spacing: 4) {
                 Image(systemName: viewModel.isUsingSceneDepth ? "sensor.tag.radiowaves.forward.fill" : "sensor.tag.radiowaves.forward")
-                Text(viewModel.isUsingSceneDepth ? "LiDAR Active" : "LiDAR Off")
+                Text(viewModel.isUsingSceneDepth ? "LiDAR" : "LiDAR Off")
                     .font(.caption)
+                if let pose = viewModel.currentPose {
+                    Text(String(format: "C:%.0f%%", pose.confidence * 100))
+                        .font(.caption.bold().monospacedDigit())
+                }
             }
             .foregroundColor(viewModel.isUsingSceneDepth ? .cyan : .secondary)
-            
+
+            // World Map Status
+            HStack(spacing: 4) {
+                Image(systemName: viewModel.hasWorldMap ? "map.fill" : "map")
+                Text(viewModel.hasWorldMap ? "Map loaded" : "No map")
+                    .font(.caption)
+            }
+            .foregroundColor(viewModel.hasWorldMap ? .green : .secondary)
+
             Spacer()
-            
+
             Text("Pts: \(viewModel.poses.count)")
-                .font(.caption.monospaced()) // Smaller font
+                .font(.caption.monospaced())
                 .foregroundColor(.secondary)
                 .padding(.bottom, 16)
         }
-        .padding(.horizontal, 10) // Tighter internal padding
+        .padding(.horizontal, 10)
     }
     
+    private var trackingStateColor: Color {
+        if viewModel.isInterrupted { return .red }
+        if viewModel.isRelocalizing { return .orange }
+        switch viewModel.trackingState {
+        case .normal: return .green
+        case .limited: return .orange
+        case .notAvailable: return .red
+        @unknown default: return .gray
+        }
+    }
+
     private var controlsPanel: some View {
-        VStack(spacing: 32) {
+        VStack(spacing: 20) {
             Spacer()
-            
+
+            // Save World Map
+            Button(action: { viewModel.saveWorldMap() }) {
+                Image(systemName: "square.and.arrow.down")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(.blue)
+                    .frame(width: 52, height: 52)
+                    .background(Color(.systemGray5))
+                    .clipShape(Circle())
+            }
+
+            // Delete World Map
+            Button(action: { viewModel.deleteWorldMap() }) {
+                Image(systemName: "map.fill")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(viewModel.hasWorldMap ? .orange : .gray)
+                    .frame(width: 52, height: 52)
+                    .background(Color(.systemGray5))
+                    .clipShape(Circle())
+            }
+            .disabled(!viewModel.hasWorldMap)
+
             // Recenter / Fit View
-            Button(action: {
-                updateAutoZoom(size: canvasSize)
-            }) {
+            Button(action: { updateAutoZoom(size: canvasSize) }) {
                 Image(systemName: "location.viewfinder")
                     .font(.system(size: 24, weight: .bold))
                     .foregroundColor(.primary)
@@ -163,7 +222,7 @@ struct ARKitPoseView: View {
                     .background(Color(.systemGray5))
                     .clipShape(Circle())
             }
-            
+
             // Clear Data
             Button(action: {
                 viewModel.clear()
@@ -176,7 +235,7 @@ struct ARKitPoseView: View {
                     .background(Color(.systemGray5))
                     .clipShape(Circle())
             }
-            
+
             // Start / Stop
             Button(action: {
                 if viewModel.isTracking {
@@ -193,7 +252,7 @@ struct ARKitPoseView: View {
                     .clipShape(Circle())
                     .shadow(radius: 4)
             }
-            
+
             Spacer()
         }
         .padding(.horizontal, 16)

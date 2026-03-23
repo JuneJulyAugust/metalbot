@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1-dev] - 2026-03-23
+
+### Changed
+- **ARKit Localization Accuracy**: Rewrote `ARKitPoseViewModel` with 8 improvements:
+  - Gimbal-safe yaw extraction via `atan2` (fixes ±π discontinuities).
+  - Dedicated high-priority delegate queue (prevents frame drops from UI contention).
+  - Session interruption + automatic relocalization handlers.
+  - ARWorldMap save/load for drift correction when revisiting mapped areas.
+  - `smoothedSceneDepth` enabled for better mesh-based tracking.
+  - ARReferenceImage detection for visual marker drift correction.
+  - Tracking confidence field (`PoseEntry.confidence`) for planner quality gating.
+  - Updated `ARKitPoseView` with interruption warnings, confidence display, and world map controls.
+
 ## [0.5.0-dev] - 2026-03-23
 
 ### Changed
