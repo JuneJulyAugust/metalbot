@@ -76,7 +76,8 @@ flowchart LR
 - **Architectural Refactor**: Decomposed MCP and iOS ViewModels into testable, protocol-oriented components.
 - Raspberry Pi USB serial forwarding to the Arduino is implemented with boot sync, reconnect, and ACK logging.
 - App icon pipeline is working through `Assets.xcassets`.
-- Remaining MVP1 work: ESC Bluetooth telemetry integration on Pi, planner/control loop, and obstacle-stop logic.
+- **ESC Bluetooth Telemetry**: A macOS-native Swift prototype (`ESCScanner.app`) for reverse-engineering the Snail ESC BLE protocol is implemented. It supports multiple packet families (`0x02`, `0x45`) and captures session-labeled telemetry logs for offline analysis.
+- **Remaining MVP1 work**: Finalize ESC protocol decoding, integrate BLE on Raspberry Pi, and implement planner/control obstacle-stop logic.
 
 ## Repository Docs
 
@@ -88,6 +89,7 @@ flowchart LR
 - `metalbot-ios/README.md`: iOS app setup, signing recovery, and deploy instructions
 - `metalbot-mcp/README.md`: Raspberry Pi bridge, UDP heartbeat, serial forwarding, and TUI dashboard
 - `firmware/metalbot-arduino/README.md`: Arduino PWM/servo firmware and deployment notes
+- `prototypes/esc_telemetry/README.md`: macOS ESC Bluetooth telemetry scanner and reverse-engineering tool
 - `assets/`: project artifacts (achievement screenshots and design sources)
 
 ## Key APIs and Sensors

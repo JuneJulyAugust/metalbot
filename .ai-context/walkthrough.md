@@ -25,6 +25,93 @@ Add entries only after real coding, integration, or testing work reveals valuabl
 
 ## Entries
 
+### 2026-03-27 - ESC Telemetry Prototype Cleanup and Documentation
+
+- **Context:** Finalizing the macOS BLE scanner prototype for reverse-engineering.
+- **What we built/tested:** 
+  - Cleaned up `prototypes/esc_telemetry/` by removing legacy Python and shell scripts.
+  - Retained the macOS Swift application (`ESCScanner.app`), core logic (`esc_app.swift`), and build scaffolding.
+  - Added a dedicated `README.md` for the prototype and updated the main project documentation.
+  - Committed the cleaned-up source and configuration to the repository.
+- **Issue observed:** The directory was cluttered with untracked experiments and non-functional scripts.
+- **Resolution:** Surgical removal of non-essential files while preserving the XcodeGen-based build path.
+- **Validation:** `build.sh` still correctly generates and builds the macOS application.
+- **Follow-up:** Use the macOS tool to finalize the protocol decoding before porting the logic to the Raspberry Pi.
+
+### 2026-03-24 - ESC Bluetooth Telemetry Reverse Engineering
+
+- **Context:** Attempting to read real-time velocity telemetry from the Snail ESC via Bluetooth (BLE) to be used by the Raspberry Pi.
+- **What we built/tested:** 
+  - Iterated through Python `bleak` scripts on macOS and Raspberry Pi to discover the ESC (`ESDM_4181FB`).
+  - Pivoted to a native Swift `CoreBluetooth` macOS app due to Linux/BlueZ stability and timeout issues.
+  - Decompiled the official Android APK (`Snail ESC`) using `jadx` to reverse-engineer the proprietary BLE protocol.
+  - Extracted the exact Service (`AE3A`), Write Characteristic (`AE3B`), Notify Characteristic (`AE3C`), and the payload parsing logic (extracting Duty Cycle, Voltage, Temp, and RPM).
+  - Implemented an automated polling script sending the discovered initialization and heartbeat bytes (e.g., `[0x45, 0x05, 0x04, 0x01]` and `[0x45, 0x04, 0x04, 0x00]`) to the `AE3B` characteristic.
+- **Issue observed:** The ESC successfully connects and accepts the characteristic subscriptions, but it does not return any telemetry data on the `AE3C` notify channel in response to our polling commands.
+- **Root cause:** The exact handshake sequence, state machine timing, or a hidden packet checksum requirement is still not perfectly matched with the official app's behavior. The ESC remains silent.
+- **Resolution:** Documented the extracted protocol characteristics and parsing logic. Paused the reverse engineering effort.
+- **Follow-up:** Future options are to perform a direct Bluetooth HCI Snoop on an Android device to capture the exact raw byte sequence sent by the official app, or to bypass the ESC entirely and use ARKit VIO for velocity estimation.
+
+### 2026-03-24 - ESC Telemetry Probe Harness
+
+- **Context:** Refining the macOS CoreBluetooth probe after the APK reverse engineering revealed two packet families.
+- **What we built/tested:** Updated `prototypes/esc_telemetry/esc_app.swift` to wait for the AE3C notification ack before writing, then sequentially probe the APK-derived `0x02` and `0x45` families with repeated init and poll commands.
+- **Issue observed:** The previous script wrote immediately after enabling notify and only exercised the legacy `0x45` packets.
+- **Root cause:** The harness did not mirror the APK's startup burst and did not distinguish CCCD write acknowledgements from telemetry notifications.
+- **Resolution:** Centralized packet generation for both families, added `didWriteValueFor` and `didUpdateNotificationStateFor` logging, and delayed writes until notifications are active.
+- **Validation:** `swiftc -framework CoreBluetooth -framework Foundation prototypes/esc_telemetry/esc_app.swift -o /tmp/esc_app_probe` succeeds on macOS.
+- **Follow-up:** Run on the physical ESC and capture which family, if either, produces live telemetry frames.
+
+### 2026-03-24 - ESC Scanner macOS App Target
+
+- **Context:** Packaging the BLE probe as a proper Finder-launchable macOS app while preserving the command-line probe path.
+- **What we built/tested:** Added `prototypes/esc_telemetry/project.yml`, generated `ESCScanner.xcodeproj`, and split the top-level launcher into `main.swift` so `esc_app.swift` can be shared by both the app target and the CLI probe.
+- **Issue observed:** Xcode app targets reject top-level executable statements even when wrapped in conditional compilation.
+- **Root cause:** The shared probe file still contained a run loop entry point, which is valid for `swiftc` but invalid inside a macOS application target.
+- **Resolution:** Moved the executable entry point into `main.swift`, kept `esc_app.swift` as shared BLE logic, and added a SwiftUI window that streams logs from the monitor.
+- **Validation:** `xcodebuild -project ESCScanner.xcodeproj -scheme ESCScanner -configuration Debug build` succeeds; `swiftc -framework CoreBluetooth -framework Foundation prototypes/esc_telemetry/esc_app.swift prototypes/esc_telemetry/main.swift -o /tmp/esc_app_probe` also succeeds.
+- **Follow-up:** Launch the built `ESCScanner.app` from Xcode or Finder and test the ESC handshake families on hardware.
+
+### 2026-03-24 - ESC Scanner Stable Output Folder
+
+- **Context:** Making the macOS app easy to launch from Finder after each build.
+- **What we built/tested:** Added `prototypes/esc_telemetry/build.sh` plus a local `.gitignore` so the app bundle is copied into `prototypes/esc_telemetry/Build/ESCScanner.app`.
+- **Issue observed:** Xcode's default build output lives in DerivedData and is not convenient for repeated Finder launches.
+- **Root cause:** The product bundle path changes with build configuration and DerivedData state.
+- **Resolution:** The helper script now builds with a fixed derived-data path, copies the finished app bundle into a visible `Build/` directory, and exposes `launch` and `open` commands.
+- **Validation:** Running `prototypes/esc_telemetry/build.sh build` succeeds and prints `Copied app to .../prototypes/esc_telemetry/Build/ESCScanner.app`.
+- **Follow-up:** Use `prototypes/esc_telemetry/build.sh launch` when you want an automatic build-and-open workflow.
+
+### 2026-03-24 - Per-Speed Telemetry Log Labeling
+
+- **Context:** Preparing repeated motor-speed capture runs for payload decoding.
+- **What we built/tested:** Added session-label parsing to the shared ESC probe and wired `build.sh` to pass `--session-label` into the app launch.
+- **Issue observed:** A single fixed log file makes it hard to compare telemetry across different commanded motor speeds.
+- **Root cause:** The logger previously wrote only to one global path and did not distinguish capture sessions.
+- **Resolution:** Logger now writes labeled runs into `~/esc_telemetry_runs/<timestamp>_<label>.log`, with `build.sh launch --session-label <label>` as the repeatable entry point.
+- **Validation:** Both `swiftc -framework CoreBluetooth -framework Foundation prototypes/esc_telemetry/esc_app.swift prototypes/esc_telemetry/main.swift -o /tmp/esc_app_probe` and `xcodebuild -project ESCScanner.xcodeproj -scheme ESCScanner -configuration Debug build` succeed after the update.
+- **Follow-up:** Capture one labeled log per motor speed step so the frame fields can be correlated with speed.
+
+### 2026-03-24 - Session Label Argument Parsing Fix
+
+- **Context:** Verifying the per-speed logging workflow after noticing unlabeled runs were still being written to the default file.
+- **What we built/tested:** Fixed `prototypes/esc_telemetry/build.sh` so `--session-label` is parsed regardless of whether it appears before or after the command (`launch`, `build`, etc.).
+- **Issue observed:** `build.sh launch --session-label speed_1000` did not forward the label because the parser stopped once it hit the command token.
+- **Root cause:** The command parser broke out of option scanning too early, so post-command options were ignored.
+- **Resolution:** Kept scanning after the command token and added a missing-value guard for `--session-label`.
+- **Validation:** `bash -n prototypes/esc_telemetry/build.sh` succeeds after the change.
+- **Follow-up:** Use either `build.sh --session-label speed_1000 launch` or `build.sh launch --session-label speed_1000`; both are now accepted.
+
+### 2026-03-24 - Logger Startup Timing Fix
+
+- **Context:** The labeled runs directory existed but remained empty after launch.
+- **What we built/tested:** Moved `Logger.configure(sessionLabel:)` into `ESCScannerApp.init()` so the session file is created before SwiftUI constructs the first view.
+- **Issue observed:** The old setup depended on `ESCScannerViewModel.init()`, which was too late to guarantee the session file existed when the app launched.
+- **Root cause:** Launch order made the logger initialization path ambiguous, and the labeled app process could start before the view model had a chance to configure file output.
+- **Resolution:** Centralized session-file setup at app startup, kept the direct executable launcher, and verified the app now creates `~/esc_telemetry_runs/<timestamp>_<label>.log` on launch.
+- **Validation:** A fresh `rpm_762` run created `~/esc_telemetry_runs/20260324_224427_rpm_762.log`.
+- **Follow-up:** Use one run per motor-speed step and keep the label matched to the commanded speed.
+
 ### 2026-03-23 - MVP1 Step 6: ARKit World Map Management and Accuracy Tuning
 
 - **Context:** Enhancing ARKit pose stability with persistence and drift correction.

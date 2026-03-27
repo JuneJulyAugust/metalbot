@@ -58,7 +58,8 @@ This backlog is hierarchical and execution-focused. Complete MVP1 before expandi
 - [x] Implement TUI dashboard on Pi (FTXUI) with stationary bi-directional meters.
 - [x] Implement USB serial bridge between Raspberry Pi and Arduino.
 - [x] Implement Arduino firmware for PWM/servo command execution.
-- [ ] Implement Bluetooth LE connection from Raspberry Pi to ESC for telemetry.
+- [x] Implement Bluetooth LE connection from macOS to ESC for telemetry reverse-engineering.
+- [ ] Implement Bluetooth LE connection from Raspberry Pi 4B to ESC for production telemetry.
 - [ ] Forward ESC velocity telemetry (`speed_mps`) from Pi to iPhone via UDP.
 
 #### 1.4.2 MCP integration contract
@@ -103,6 +104,7 @@ This backlog is hierarchical and execution-focused. Complete MVP1 before expandi
 
 #### 4.1.1 Open items
 
+- [ ] Decide whether to continue reverse-engineering the Snail ESC BLE protocol (via Android HCI snoop) or pivot to using ARKit VIO for velocity estimation.
 - [ ] Decide whether BLE remains worth keeping as a prototype transport after Wi-Fi UDP is validated on vehicle.
 - [ ] Finalize stop-policy defaults after initial braking tests.
 - [ ] Finalize controller loop rate after latency and stability measurements.
