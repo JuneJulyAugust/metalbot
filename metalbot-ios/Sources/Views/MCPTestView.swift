@@ -63,6 +63,68 @@ struct MCPTestView: View {
                     }
                     .groupBoxStyle(ModernGroupBoxStyle())
 
+                    // --- ESC TELEMETRY CARD ---
+                    GroupBox(label: 
+                        Label("ESC TELEMETRY (Direct BLE)", systemImage: "bolt.horizontal.fill")
+                            .font(.caption.bold())
+                            .foregroundColor(.secondary)
+                    ) {
+                        VStack(alignment: .leading, spacing: 16) {
+                            HStack {
+                                Circle()
+                                    .fill(viewModel.escStatus == .connected ? Color.green : Color.orange)
+                                    .frame(width: 8, height: 8)
+                                
+                                Text(viewModel.escStatus.rawValue)
+                                    .font(.subheadline.bold())
+                                    .foregroundColor(viewModel.escStatus == .connected ? .green : .orange)
+                                
+                                if viewModel.escStatus == .connected {
+                                    Text("(\(viewModel.escDeviceName))")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                
+                                Spacer()
+                                
+                                if let telemetry = viewModel.escTelemetry {
+                                    Text("\(String(format: "%.1f", telemetry.updateFrequency)) Hz")
+                                        .font(.caption.monospacedDigit().bold())
+                                        .padding(.horizontal, 6)
+                                        .padding(.vertical, 2)
+                                        .background(Color.blue.opacity(0.1))
+                                        .foregroundColor(.blue)
+                                        .cornerRadius(4)
+                                }
+                            }
+                            
+                            Divider()
+                            
+                            HStack(alignment: .top) {
+                                VStack(alignment: .leading, spacing: 12) {
+                                    MetricRow(label: "Motor Speed", value: "\(viewModel.escTelemetry?.rpm ?? 0) RPM")
+                                    MetricRow(label: "Voltage", value: String(format: "%.2f V", viewModel.escTelemetry?.voltage ?? 0.0))
+                                }
+                                Spacer()
+                                Divider().frame(height: 40)
+                                Spacer()
+                                VStack(alignment: .leading, spacing: 12) {
+                                    MetricRow(label: "ESC Temp", value: String(format: "%.1f °C", viewModel.escTelemetry?.escTemperature ?? 0.0))
+                                    MetricRow(label: "Motor Temp", value: String(format: "%.1f °C", viewModel.escTelemetry?.motorTemperature ?? 0.0))
+                                }
+                            }
+                            
+                            if let telemetry = viewModel.escTelemetry {
+                                Text("Last update: \(telemetry.timestamp.formatted(date: .omitted, time: .complete))")
+                                    .font(.system(size: 8, design: .monospaced))
+                                    .foregroundStyle(.secondary)
+                                    .padding(.top, 4)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+                    .groupBoxStyle(ModernGroupBoxStyle())
+
                     // --- CONTROL CARD ---
                     GroupBox(label: 
                         Label("MANUAL CONTROL", systemImage: "gamecontroller.fill")

@@ -15,7 +15,13 @@ class MCPTestViewModel: ObservableObject {
     @Published var iphoneIP: String = "Unknown"
     @Published var iphoneName: String = UIDevice.current.name
 
+    @Published var escStatus: ESCBleStatus = .disconnected
+    @Published var escTelemetry: ESCTelemetry?
+    @Published var escDeviceName: String = "Unknown"
+
     private let connection: MCPConnection
+    private let escManager = ESCBleManager()
+    private var cancellables = Set<AnyCancellable>()
 
     private let timeFormatter: DateFormatter = {
         let df = DateFormatter()
@@ -28,15 +34,32 @@ class MCPTestViewModel: ObservableObject {
         self.connection = conn
         iphoneIP = Self.getInterfaceIPAddress() ?? "0.0.0.0"
         setupCallbacks()
+        setupEscSubscriptions()
         conn.connect()
+        escManager.start()
         startHeartbeat()
     }
 
     deinit {
         connection.disconnect()
+        escManager.stop()
     }
 
     // MARK: - Setup
+
+    private func setupEscSubscriptions() {
+        escManager.$status
+            .receive(on: DispatchQueue.main)
+            .assign(to: &$escStatus)
+        
+        escManager.$telemetry
+            .receive(on: DispatchQueue.main)
+            .assign(to: &$escTelemetry)
+        
+        escManager.$deviceName
+            .receive(on: DispatchQueue.main)
+            .assign(to: &$escDeviceName)
+    }
 
     private func setupCallbacks() {
         connection.onMessageReceived = { [weak self] msg in

@@ -24,6 +24,8 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>metalbot uses the camera and LiDAR sensor for depth perception and obstacle detection.</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>metalbot uses Bluetooth to connect to the ESC for telemetry data.</string>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UIRequiredDeviceCapabilities</key>

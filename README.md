@@ -12,7 +12,7 @@
 
 The name comes from Apple Metal: the app will rely on high-performance iPhone GPU/compute paths for perception over time.
 
-The iPhone runs perception, estimation, and high-level control. Raspberry Pi 4B and Arduino act as MCP (motor/control processor) for low-level actuation and watchdog behavior.
+The iPhone runs perception, estimation, and high-level control. Raspberry Pi 4B and Arduino act as MCP (motor/control processor) for low-level actuation and watchdog behavior. The iPhone connects directly to the ESC via Bluetooth LE for high-frequency telemetry.
 
 ## MVP1 Architecture
 
@@ -21,6 +21,7 @@ flowchart LR
     subgraph iPhoneApp["iPhone app"]
         perception["Perception\nARKit sceneDepth + RGB + IMU"]
         highLevelControl["High-level control\nspeed planner + diagnostics"]
+        escBle["ESC BLE Manager\nDirect telemetry"]
     end
 
     subgraph piBridge["Raspberry Pi 4B"]
@@ -34,6 +35,7 @@ flowchart LR
     actuators["Steering servo + ESC"]
 
     perception --> highLevelControl
+    escBle -->|RPM + Temp| highLevelControl
     highLevelControl -->|Wi-Fi UDP heartbeats + commands| mcpBridge
     mcpBridge -->|USB serial S/M commands| lowLevel
     lowLevel --> actuators
@@ -46,7 +48,7 @@ flowchart LR
    - LiDAR raw point-cloud capture from ARKit `sceneDepth`
    - RGB + point-cloud debug visualization (portrait top/bottom, landscape left/right)
    - 6D Pose estimation via ARKit Visual-Inertial Odometry (VIO) with World Map persistence
-   - ESC velocity estimation via Bluetooth on Raspberry Pi
+   - ESC velocity estimation via direct Bluetooth LE connection to iPhone
    - speed planner + feedback control (reach target speed, then keep it)
    - straight driving by yaw-rate hold (ARKit-derived)
    - planner-triggered stop when obstacle points block future path
@@ -76,8 +78,8 @@ flowchart LR
 - **Architectural Refactor**: Decomposed MCP and iOS ViewModels into testable, protocol-oriented components.
 - Raspberry Pi USB serial forwarding to the Arduino is implemented with boot sync, reconnect, and ACK logging.
 - App icon pipeline is working through `Assets.xcassets`.
-- **ESC Bluetooth Telemetry**: A macOS-native Swift prototype (`ESCScanner.app`) for reverse-engineering the Snail ESC BLE protocol is implemented. It supports multiple packet families (`0x02`, `0x45`) and captures session-labeled telemetry logs for offline analysis.
-- **Remaining MVP1 work**: Finalize ESC protocol decoding, integrate BLE on Raspberry Pi, and implement planner/control obstacle-stop logic.
+- **ESC Bluetooth Telemetry**: Direct iPhone-to-ESC BLE connection is implemented in the iOS app with real-time RPM, temperature, and frequency monitoring.
+- **Remaining MVP1 work**: Finalize speed planner / control loop and obstacle-stop logic.
 
 ## Repository Docs
 
