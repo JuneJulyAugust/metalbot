@@ -1,0 +1,6 @@
+.derivedData/
+Build/
+ESCScanner.app/
+ESCScanner.xcodeproj/
+*.log
+.DS_Store
