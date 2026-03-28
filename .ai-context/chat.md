@@ -4,6 +4,26 @@ This file stores the historical context, milestones, and prompts to resume devel
 
 ---
 
+## 2026-03-28 - STM32 BLE Reconnect Fix
+
+### Summary
+The STM32 BLE path now reconnects reliably after the first iPhone session. The root cause was iOS caching the wrong GAP name (`BlueNRG`) from the STM32 peripheral, which caused the scanner to ignore the device on later scans.
+
+### Achievements
+1.  **STM32 BLE Naming**: Updated the BlueNRG GAP device name to `METALBOT-MCP` and expanded the GAP device-name length to match the real advertising name.
+2.  **iOS Scanner**: Hardened `STM32BleManager` to match both cached peripheral names and advertising local names, then clear stale references on disconnect.
+3.  **Validation**: Rebuilt and flashed the firmware, then verified the app can rediscover the STM32 BLE board after reconnect.
+
+### Current State
+- **STM32 BLE**: Advertising and reconnecting correctly.
+- **iOS Control**: `STM32ControlView` can connect after a prior session without staying stuck in scanning.
+- **Next Step**: Keep the BLE path as the validated direct-control option while the rest of MVP1 continues.
+
+### Prompt Context for Next Session
+"The STM32 BLE direct-control path is working again after fixing the cached GAP-name mismatch. The next session should treat the reconnect-safe STM32 BLE link as the current baseline and build on top of it if more control features are added."
+
+---
+
 ## 2026-03-23 - MCP Refactor and World Map Management
 
 ### Summary

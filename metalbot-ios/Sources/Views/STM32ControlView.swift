@@ -125,7 +125,7 @@ struct STM32ControlView: View {
                     // --- VERSION INFO ---
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
-                            Text("STM32 MCP v0.2.0-ble")
+                            Text("STM32 MCP v0.2.1-ble")
                             Spacer()
                             Text("Direct BLE Control")
                         }

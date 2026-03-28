@@ -73,6 +73,7 @@ This backlog is hierarchical and execution-focused. Complete MVP1 before expandi
 - [x] Generate STM32CubeMX project for STM32L475 target (`stm32-mcp`).
 - [x] Develop command-line build and flash script `build.sh` using STM32CubeCLT.
 - [x] Establish CMake presets and correct `.gitignore` & Git LFS for STM32 drivers.
+- [x] Fix the STM32/iOS BLE reconnect loop by aligning GAP device naming with iOS cache behavior.
 
 
 ### 1.5 Validation and exit criteria

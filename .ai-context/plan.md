@@ -117,6 +117,7 @@ This plan is high-level and stable for now. We refine internals only after imple
 | --- | --- | --- | --- |
 | iPhone <-> Pi | Wi-Fi UDP heartbeats and commands | 1.5-second connection timeout on both sides; refactored for testability | Implemented |
 | Pi <-> Arduino | USB serial forwarding | Auto-reconnect, 3.5-second boot sync, ACK logging; firmware timeout currently logs without neutralization in debug mode | Implemented |
+| STM32 direct BLE control | iPhone <-> STM32 | BlueNRG-MS custom GATT control service with reconnect-safe GAP naming and iOS name matching | Implemented |
 | Drive arbitration | planner / estop | Planner stop should override normal speed; estop remains top priority | Planned |
 
 ## 4. Engineering Invariants

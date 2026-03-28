@@ -7,7 +7,7 @@ Receives steering and throttle commands over BLE and drives PWM outputs to contr
 
 - **Target MCU**: STM32L475 (Cortex-M4 with FPU)
 - **Board**: B-L475E-IOT01A (Discovery Kit IoT Node)
-- **Current Version**: 0.2.0-ble
+- **Current Version**: 0.2.1-ble
 - **Framework**: STM32Cube HAL + BlueNRG-MS BLE middleware
 - **BLE Module**: SPBTLE-RF (BlueNRG-MS) via SPI3
 
@@ -21,6 +21,7 @@ Receives steering and throttle commands over BLE and drives PWM outputs to contr
   - `PB4` (TIM3_CH1) → Throttle ESC
 - **Safety Watchdog**: 1.5s timeout reverts to neutral (1500µs) on connection loss
 - **Device Name**: `METALBOT-MCP`
+- **Reconnect Behavior**: The iOS control app now matches both the cached GAP name and advertising name.
 
 ## Build and Flash
 

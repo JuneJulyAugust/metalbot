@@ -6,6 +6,8 @@ This document reflects the implemented MVP1 step-1 stack (not the earlier depth-
 
 Capture LiDAR data on iPhone and render an orientation-correct raw point cloud, aligned with a simultaneous RGB camera view for debugging and validation.
 
+The STM32 BLE reconnect fix did not change this geometry stack; it only affects control transport.
+
 ## Implemented Data Contracts
 
 ```swift

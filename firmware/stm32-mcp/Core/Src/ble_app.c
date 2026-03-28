@@ -30,14 +30,13 @@
 #include "blesvc.h"
 
 #include <string.h>
-#include <stdio.h>
 
 /* Private types -------------------------------------------------------------*/
 
 /** Command payload from iOS: 4 bytes packed little-endian */
 typedef struct __attribute__((packed)) {
-    int16_t steering_us;   /**< Steering pulse width in microseconds */
-    int16_t throttle_us;   /**< Throttle pulse width in microseconds */
+    int16_t steering_us;
+    int16_t throttle_us;
 } BLE_CommandPayload_t;
 
 /** BLE Application context */
@@ -58,8 +57,11 @@ typedef struct {
 static BLE_AppContext_t bleCtx;
 RTC_HandleTypeDef hrtc_ble;
 
-/* Device name for GAP advertising */
-static const char ble_device_name[] = "METALBOT-MCP";
+/* HCI transport layer buffers */
+#define POOL_SIZE (CFG_TLBLE_EVT_QUEUE_LENGTH * \
+    (sizeof(TL_PacketHeader_t) + TL_BLE_EVENT_FRAME_SIZE))
+static TL_CmdPacket_t HciCmdBuffer;
+static uint8_t HciEvtPool[POOL_SIZE];
 
 /* Forward declarations ------------------------------------------------------*/
 static void BLE_InitStack(void);
@@ -81,72 +83,26 @@ static void BLE_AdvTask(void);
 /*  PUBLIC API                                                                */
 /*============================================================================*/
 
-static void blink_debug(int n) {
-    for (int i=0; i<n; i++) {
-        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET);
-        HAL_Delay(200);
-        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
-        HAL_Delay(200);
-    }
-    HAL_Delay(1000);
-}
-
 int BLE_App_Init(TIM_HandleTypeDef *htim)
 {
-    /* Initialize LD1 on PA5 as Output for debug blinking */
-    GPIO_InitTypeDef GPIO_InitStruct_Debug = {0};
-    GPIO_InitStruct_Debug.Pin = GPIO_PIN_5;
-    GPIO_InitStruct_Debug.Mode = GPIO_MODE_OUTPUT_PP;
-    GPIO_InitStruct_Debug.Pull = GPIO_NOPULL;
-    GPIO_InitStruct_Debug.Speed = GPIO_SPEED_FREQ_LOW;
-    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct_Debug);
-
     memset(&bleCtx, 0, sizeof(bleCtx));
     bleCtx.htim = htim;
     bleCtx.currentSteering = PWM_NEUTRAL_US;
     bleCtx.currentThrottle = PWM_NEUTRAL_US;
     bleCtx.lastCommandTick = HAL_GetTick();
 
-    blink_debug(1);
-
-    /* Initialize low-power manager (we won't use LPM but the BLE stack requires it) */
     BLE_InitLPM();
-
-    blink_debug(2);
-
-    /* Initialize RTC for the Timer Server (required by BlueNRG SPI driver) */
     BLE_InitRTC();
-    
-    blink_debug(3);
-    
     HW_TS_Init(hw_ts_InitMode_Full, &hrtc_ble);
 
-    blink_debug(4);
-
-    /* Register scheduler tasks */
     SCH_RegTask(CFG_IdleTask_HciAsynchEvt, BLE_HciUserEvtTask);
     SCH_RegTask(CFG_IdleTask_TlEvt,        BLE_TlEvtTask);
     SCH_RegTask(CFG_IdleTask_StartAdv,     BLE_AdvTask);
 
-    /* Initialize the BLE stack (HCI, GAP, GATT) */
     BLE_InitStack();
-
-    blink_debug(5);
-
-    /* Add our custom GATT service */
     BLE_InitGATTService();
-
-    blink_debug(6);
-
-    /* Start PWM outputs at neutral */
     BLE_ApplyPWM(PWM_NEUTRAL_US, PWM_NEUTRAL_US);
-
-    blink_debug(7);
-
-    /* Begin advertising */
     BLE_StartAdvertising();
-
-    blink_debug(8);
 
     return 0;
 }
@@ -184,6 +140,12 @@ int BLE_App_IsConnected(void)
 
 static void BLE_InitStack(void)
 {
+    /* Initialize HCI transport layer — this inits SPI3, resets BlueNRG,
+     * and waits for the reset event from the module. Must happen before
+     * any HCI commands (i.e. before SVCCTL_Init). */
+    TL_BLE_HCI_Init(TL_BLE_HCI_InitFull, &HciCmdBuffer,
+                     HciEvtPool, POOL_SIZE);
+
     SVCCTL_Init();
 }
 
@@ -248,25 +210,34 @@ static void BLE_InitGATTService(void)
 
 static void BLE_StartAdvertising(void)
 {
-    tBleStatus ret;
+    if (bleCtx.isConnected) return;
 
-    /* Build advertising local name: type is 'const char*' per aci_gap_set_discoverable() */
-    char ad_name[sizeof(ble_device_name) + 1];
-    ad_name[0] = AD_TYPE_COMPLETE_LOCAL_NAME;
-    memcpy(&ad_name[1], ble_device_name, sizeof(ble_device_name) - 1);
+    const char ad_name[] = {AD_TYPE_COMPLETE_LOCAL_NAME,
+        'M','E','T','A','L','B','O','T','-','M','C','P'};
 
-    ret = aci_gap_set_discoverable(ADV_IND,
-                                   CFG_FAST_CONN_ADV_INTERVAL_MIN,
-                                   CFG_FAST_CONN_ADV_INTERVAL_MAX,
-                                   PUBLIC_ADDR,
-                                   NO_WHITE_LIST_USE,
-                                   (uint8_t)sizeof(ad_name),
-                                   ad_name,
-                                   0,
-                                   NULL,
-                                   0,
-                                   0);
-    (void)ret;
+    const uint8_t svc_uuid_list[] = {
+        AD_TYPE_16_BIT_SERV_UUID_CMPLT_LIST,
+        (uint8_t)(METALBOT_CONTROL_SVC_UUID & 0xFF),
+        (uint8_t)(METALBOT_CONTROL_SVC_UUID >> 8)
+    };
+
+    tBleStatus ret = aci_gap_set_discoverable(
+        ADV_IND,
+        CFG_FAST_CONN_ADV_INTERVAL_MIN,
+        CFG_FAST_CONN_ADV_INTERVAL_MAX,
+        PUBLIC_ADDR,
+        NO_WHITE_LIST_USE,
+        sizeof(ad_name),
+        ad_name,
+        sizeof(svc_uuid_list),
+        (uint8_t *)svc_uuid_list,
+        0,
+        0);
+
+    if (ret != BLE_STATUS_SUCCESS) {
+        /* Retry via scheduler if the stack wasn't ready yet */
+        SCH_SetTask(CFG_IdleTask_StartAdv);
+    }
 }
 
 /*============================================================================*/
@@ -332,10 +303,11 @@ void SVCCTL_App_Notification(void *pckt)
     case EVT_DISCONN_COMPLETE: {
         bleCtx.isConnected = 0;
         bleCtx.connectionHandle = 0;
-        /* Revert to neutral on disconnect */
         BLE_ApplyPWM(PWM_NEUTRAL_US, PWM_NEUTRAL_US);
-        /* Re-advertise */
-        BLE_StartAdvertising();
+        /* Defer re-advertising to the scheduler — calling
+         * aci_gap_set_discoverable from inside an HCI event
+         * callback can fail because the command channel is busy. */
+        SCH_SetTask(CFG_IdleTask_StartAdv);
         break;
     }
     case EVT_LE_META_EVENT: {
@@ -471,8 +443,18 @@ void HW_TS_RTC_Int_AppNot(uint32_t TimerProcessID, uint8_t TimerID,
  */
 void TL_BLE_HCI_StatusNot(TL_BLE_HCI_CmdStatus_t status)
 {
-    (void)status;
-    /* No action needed for our simple peripheral use case */
+    switch (status) {
+    case TL_BLE_HCI_CmdBusy:
+        SCH_PauseTask(CFG_IdleTask_StartAdv);
+        SCH_PauseTask(CFG_IdleTask_HciAsynchEvt);
+        break;
+    case TL_BLE_HCI_CmdAvailable:
+        SCH_ResumeTask(CFG_IdleTask_StartAdv);
+        SCH_ResumeTask(CFG_IdleTask_HciAsynchEvt);
+        break;
+    default:
+        break;
+    }
 }
 
 /**

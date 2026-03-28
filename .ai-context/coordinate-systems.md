@@ -25,6 +25,8 @@ Used for tracking robot pose. Independent of compass.
 - **-Z**: Forward (looking direction, INTO the scene)
 - `frame.camera.transform` maps camera-space → world-space
 
+BLE control changes do not alter these frame conventions.
+
 ## LiDAR Depth Map Pixel Space
 - **(u, v)**: column, row of depth buffer
 - **u**: increases rightward (camera's +X)

@@ -25,19 +25,30 @@ Add entries only after real coding, integration, or testing work reveals valuabl
 
 ## Entries
 
-### 2026-03-27 - STM32 BLE Advertising Debugging & Initialization Root Causes
+### 2026-03-28 - STM32 BLE Initialization Fix (Multiple Root Causes Resolved)
 
 - **Context:** Transitioning low-level control from Arduino to STM32L475 (B-L475E-IOT01A) and enabling BLE command reception directly from the iPhone via the SPBTLE-RF (BlueNRG-MS) module.
-- **What we built/tested:** 
-  - Integrated X-CUBE-BLE1 middleware into the CMake build system.
-  - Set up TIM3 for PWM on PB1/PB4 and defined a custom GATT service with steering/throttle characteristics.
-  - Created a SwiftUI control interface leveraging a custom CoreBluetooth manager wrapper.
-  - Implemented debug pin blinking throughout `BLE_App_Init` to trace execution progress when advertising failed to start.
-- **Issue observed:** The STM32 firmware successfully built and flashed, but the BLE device "METALBOT-MCP" never appeared on nRF Connect or iOS. Adding a heartbeat LED in the main loop confirmed the main loop was entirely frozen. Further isolating with linear pinpoint delays revealed the freeze occurs completely prior to `BLE_App_Init()`.
-- **Root cause:** The initialization sequence hangs before the main application loop, preventing BLE application initialization. The exact mechanism isn't isolated yet, but it locks the ARM core or disables clock peripherals before reaching our `BLE_App_Init()` routine or during early HAL setup.
-- **Resolution:** (Pending) Identified that the hang occurs extremely early in `main()` or global HAL init, before BLE tasks are registered.
-- **Validation:** Visual indication (LD1 `PA5` connected to debugger logic) does not power on during execution.
-- **Follow-up:** Systematic bisection of `main()` Initialization (`MX_GPIO_Init`, `SystemClock_Config`, etc.), verify hardware watchdog state, and check fault hooks for precise hang location.
+- **Root causes identified and fixed:**
+  1. **Missing HCI transport layer init:** `BLE_InitStack()` only called `SVCCTL_Init()`, which sends HCI commands to the BlueNRG chip. But the SPI transport layer (`TL_BLE_HCI_Init` → `HW_BNRG_Init`) was never called first. The first HCI command hung forever waiting for a response from an uninitialized chip. **Fix:** Added `TL_BLE_HCI_Init(TL_BLE_HCI_InitFull, ...)` before `SVCCTL_Init()`.
+  2. **SPI3 initialization conflict:** CubeMX-generated `MX_SPI3_Init()` configured SPI3 with `SPI_DATASIZE_4BIT` (for ISM43362 WiFi). The BLE middleware's `hw_spi.c` owns SPI3 and needs 8-bit mode with DMA. **Fix:** Removed `MX_SPI3_Init()` entirely — `hw_spi.c` handles all SPI3 setup.
+  3. **Missing RTC backup domain reset:** On pin-reset, stale RTC wakeup configuration from a previous run could hang the Timer Server. The reference P2P_LedButton example resets the backup domain on PINRST. **Fix:** Added `LL_RCC_ForceBackupDomainReset()` sequence in `main()`.
+  4. **Missing DMA IRQ handlers:** The BLE SPI driver uses DMA2 channels 1 and 2 but the IRQ handlers were missing from `stm32l4xx_it.c`. **Fix:** Added `DMA2_Channel1_IRQHandler` and `DMA2_Channel2_IRQHandler`.
+  5. **RTC_WKUP_IRQHandler not clearing flags:** Called `HW_TS_RTC_Wakeup_Handler()` directly without clearing EXTI/RTC flags. **Fix:** Route through `HAL_RTCEx_WakeUpTimerIRQHandler()` which clears flags, then the `HAL_RTCEx_WakeUpTimerEventCallback` calls the Timer Server.
+  6. **BLE advertising missing service UUID:** iOS couldn't discover by service UUID. **Fix:** Added `AD_TYPE_16_BIT_SERV_UUID_CMPLT_LIST` to advertising data.
+- **Validation:** Firmware builds cleanly (40KB flash, 6KB RAM). Flash and test with nRF Connect / iOS app.
+
+### 2026-03-28 - STM32 BLE Reconnect Fix (Cached GAP Name Mismatch)
+
+- **Context:** The iOS app connected once, then stayed in scanning mode on reconnect while nRF Connect still saw the peripheral.
+- **Root cause:** BlueNRG still exposed the GAP device name as `BlueNRG` with a 7-byte characteristic, so iOS cached the wrong peripheral name after the first connection and the scanner filtered out the device on subsequent runs.
+- **Resolution:** Renamed the GAP device to `METALBOT-MCP`, expanded the GAP device-name length, updated the iOS scanner to match both cached and advertising names, and rebuilt/flashed the firmware.
+- **Validation:** Firmware rebuilt successfully and the iOS reconnect path now accepts the STM32 peripheral again.
+
+### 2026-03-27 - STM32 BLE Advertising Debugging & Initialization Root Causes (Superseded)
+
+- **Context:** Initial debugging session — see entry above for resolution.
+- **Issue observed:** The STM32 firmware successfully built and flashed, but the BLE device "METALBOT-MCP" never appeared on nRF Connect or iOS. Adding a heartbeat LED in the main loop confirmed the main loop was entirely frozen.
+- **Root cause:** Multiple initialization issues (see 2026-03-28 entry above).
 
 ### 2026-03-27 - STM32 Firmware Target Setup
 

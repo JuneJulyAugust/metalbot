@@ -121,6 +121,7 @@ extern "C" {
  * Transport Layer Buffer
  *----------------------------------------------------------------------------*/
 #define CFG_TLBLE_MOST_EVENT_PAYLOAD_SIZE 255  /* Max HCI event payload */
+#define CFG_TLBLE_EVT_QUEUE_LENGTH        5
 
 /*----------------------------------------------------------------------------*
  * SPI Timing (from P2P_LedButton reference)

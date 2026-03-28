@@ -47,7 +47,7 @@ typedef struct{
 /* Private defines -----------------------------------------------------------*/
 #define SVCCTL_EGID_EVT_MASK   0xFF00
 #define SVCCTL_GATT_EVT_TYPE   0x0C00
-#define SVCCTL_GAP_DEVICE_NAME_LENGTH 7
+#define SVCCTL_GAP_DEVICE_NAME_LENGTH 14
 
 #define BD_ADDR_SIZE_LOCAL        6
 
@@ -146,7 +146,7 @@ void SVCCTL_Init( void )
 
   if(role > 0)
   {
-    const char *name = "BlueNRG";
+    const char *name = "METALBOT-MCP";
 
     aci_gap_init(role,
                  0,

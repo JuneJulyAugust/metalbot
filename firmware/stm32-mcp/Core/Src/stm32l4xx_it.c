@@ -196,14 +196,8 @@ void SysTick_Handler(void)
   */
 void RTC_WKUP_IRQHandler(void)
 {
-  /* USER CODE BEGIN RTC_WKUP_IRQn 0 */
-
-  /* USER CODE END RTC_WKUP_IRQn 0 */
-  extern void HW_TS_RTC_Wakeup_Handler(void);
-  HW_TS_RTC_Wakeup_Handler();
-  /* USER CODE BEGIN RTC_WKUP_IRQn 1 */
-
-  /* USER CODE END RTC_WKUP_IRQn 1 */
+  extern RTC_HandleTypeDef hrtc_ble;
+  HAL_RTCEx_WakeUpTimerIRQHandler(&hrtc_ble);
 }
 
 /******************************************************************************/
@@ -249,5 +243,23 @@ void EXTI15_10_IRQHandler(void)
 }
 
 /* USER CODE BEGIN 1 */
+
+/**
+  * @brief DMA2 Channel1 (SPI3 RX for BlueNRG-MS) interrupt handler.
+  */
+void DMA2_Channel1_IRQHandler(void)
+{
+  extern void HW_BNRG_DMARxCb(void);
+  HW_BNRG_DMARxCb();
+}
+
+/**
+  * @brief DMA2 Channel2 (SPI3 TX for BlueNRG-MS) interrupt handler.
+  */
+void DMA2_Channel2_IRQHandler(void)
+{
+  extern void HW_BNRG_DMATxCb(void);
+  HW_BNRG_DMATxCb();
+}
 
 /* USER CODE END 1 */

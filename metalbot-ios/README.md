@@ -55,4 +55,5 @@ The project is already configured for automatic signing in `project.yml`, so the
 
 - `project.yml` is the source of truth for signing and build settings.
 - `build.sh` runs `xcodegen generate`, builds, installs, and launches the app.
+- The STM32 direct-control screen uses reconnect-safe BLE scanning against `METALBOT-MCP`.
 - If launch still fails after install, the script prints a trust/signing hint in the terminal.

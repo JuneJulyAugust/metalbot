@@ -79,6 +79,7 @@ flowchart LR
 - Raspberry Pi USB serial forwarding to the Arduino is implemented with boot sync, reconnect, and ACK logging.
 - App icon pipeline is working through `Assets.xcassets`.
 - **ESC Bluetooth Telemetry**: Direct iPhone-to-ESC BLE connection is implemented in the iOS app with real-time RPM, temperature, and frequency monitoring.
+- **STM32 Direct BLE Control**: The iPhone STM32 control screen now reconnects reliably to `METALBOT-MCP` after a prior session.
 - **Remaining MVP1 work**: Finalize speed planner / control loop and obstacle-stop logic.
 
 ## Repository Docs

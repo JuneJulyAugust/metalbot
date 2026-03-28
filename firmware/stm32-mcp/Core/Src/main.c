@@ -22,6 +22,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "ble_app.h"
+#include "stm32l4xx_ll_rcc.h"
+#include "stm32l4xx_ll_pwr.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -46,8 +48,6 @@ I2C_HandleTypeDef hi2c2;
 
 QSPI_HandleTypeDef hqspi;
 
-SPI_HandleTypeDef hspi3;
-
 TIM_HandleTypeDef htim3;
 
 UART_HandleTypeDef huart1;
@@ -65,7 +65,6 @@ static void MX_GPIO_Init(void);
 static void MX_DFSDM1_Init(void);
 static void MX_I2C2_Init(void);
 static void MX_QUADSPI_Init(void);
-static void MX_SPI3_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_USART3_UART_Init(void);
@@ -96,7 +95,21 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
+  __HAL_RCC_PWR_CLK_ENABLE();
 
+  /*
+   * Reset the RTC backup domain on pin-reset so stale RTC wakeup state
+   * from a previous run cannot hang the Timer Server initialization.
+   * This matches the reference P2P_LedButton example.
+   */
+  if (LL_RCC_IsActiveFlag_PINRST() != RESET) {
+    LL_PWR_ClearFlag_SB();
+    HAL_PWR_EnableBkUpAccess();
+    HAL_PWR_EnableBkUpAccess();
+    LL_RCC_ForceBackupDomainReset();
+    __HAL_RCC_CLEAR_RESET_FLAGS();
+    LL_RCC_ReleaseBackupDomainReset();
+  }
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -111,12 +124,22 @@ int main(void)
   MX_DFSDM1_Init();
   MX_I2C2_Init();
   MX_QUADSPI_Init();
-  MX_SPI3_Init();
+  /* SPI3 is owned by the BLE middleware (hw_spi.c) — do NOT init here */
   MX_TIM3_Init();
   MX_USART1_UART_Init();
   MX_USART3_UART_Init();
   MX_USB_OTG_FS_PCD_Init();
   /* USER CODE BEGIN 2 */
+  /* LD1 (PA5) heartbeat LED */
+  {
+    GPIO_InitTypeDef led = {0};
+    led.Pin = GPIO_PIN_5;
+    led.Mode = GPIO_MODE_OUTPUT_PP;
+    led.Pull = GPIO_NOPULL;
+    led.Speed = GPIO_SPEED_FREQ_LOW;
+    HAL_GPIO_Init(GPIOA, &led);
+  }
+
   /* Start TIM3 PWM on CH1 (throttle PB4) and CH4 (steering PB1) */
   HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
   HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_4);
@@ -124,14 +147,6 @@ int main(void)
   /* Initialize BLE stack and custom GATT service */
   BLE_App_Init(&htim3);
   /* USER CODE END 2 */
-
-  /* Initialize LD1 on PA5 as Output for debug blinking */
-  GPIO_InitTypeDef GPIO_InitStruct_Debug = {0};
-  GPIO_InitStruct_Debug.Pin = GPIO_PIN_5;
-  GPIO_InitStruct_Debug.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct_Debug.Pull = GPIO_NOPULL;
-  GPIO_InitStruct_Debug.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct_Debug);
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
@@ -331,45 +346,7 @@ static void MX_QUADSPI_Init(void)
 
 }
 
-/**
-  * @brief SPI3 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_SPI3_Init(void)
-{
-
-  /* USER CODE BEGIN SPI3_Init 0 */
-
-  /* USER CODE END SPI3_Init 0 */
-
-  /* USER CODE BEGIN SPI3_Init 1 */
-
-  /* USER CODE END SPI3_Init 1 */
-  /* SPI3 parameter configuration*/
-  hspi3.Instance = SPI3;
-  hspi3.Init.Mode = SPI_MODE_MASTER;
-  hspi3.Init.Direction = SPI_DIRECTION_2LINES;
-  hspi3.Init.DataSize = SPI_DATASIZE_4BIT;
-  hspi3.Init.CLKPolarity = SPI_POLARITY_LOW;
-  hspi3.Init.CLKPhase = SPI_PHASE_1EDGE;
-  hspi3.Init.NSS = SPI_NSS_SOFT;
-  hspi3.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
-  hspi3.Init.FirstBit = SPI_FIRSTBIT_MSB;
-  hspi3.Init.TIMode = SPI_TIMODE_DISABLE;
-  hspi3.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
-  hspi3.Init.CRCPolynomial = 7;
-  hspi3.Init.CRCLength = SPI_CRC_LENGTH_DATASIZE;
-  hspi3.Init.NSSPMode = SPI_NSS_PULSE_ENABLE;
-  if (HAL_SPI_Init(&hspi3) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN SPI3_Init 2 */
-
-  /* USER CODE END SPI3_Init 2 */
-
-}
+/* SPI3 initialization is handled by BLE middleware (hw_spi.c) */
 
 /**
   * @brief TIM3 Initialization Function

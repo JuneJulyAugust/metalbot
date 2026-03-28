@@ -60,7 +60,7 @@ public class STM32BleManager: NSObject, ObservableObject {
         if let peripheral {
             centralManager.cancelPeripheralConnection(peripheral)
         }
-        status = .disconnected
+        cleanup()
     }
 
     /// Send steering and throttle pulse widths (in µs) to the STM32.
@@ -85,17 +85,20 @@ public class STM32BleManager: NSObject, ObservableObject {
 
     // MARK: - Private
 
+    private func cleanup() {
+        peripheral = nil
+        commandChar = nil
+        statusChar = nil
+        status = .disconnected
+    }
+
     private func scan() {
         status = .scanning
-        // Scan for our specific service UUID for faster discovery
-        centralManager.scanForPeripherals(withServices: [controlServiceUUID], options: nil)
-
-        // Also scan without filter as fallback (16-bit UUIDs may not appear in advertising)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
-            guard let self, self.status == .scanning else { return }
-            self.centralManager.stopScan()
-            self.centralManager.scanForPeripherals(withServices: nil, options: nil)
-        }
+        /* Scan without service filter — BlueNRG 16-bit UUIDs are often
+         * not included in the iOS service-UUID advertisement cache, so
+         * a filtered scan silently misses the device.  We match by name
+         * in didDiscover instead. */
+        centralManager.scanForPeripherals(withServices: nil, options: nil)
     }
 }
 
@@ -120,13 +123,17 @@ extension STM32BleManager: CBCentralManagerDelegate {
                                didDiscover peripheral: CBPeripheral,
                                advertisementData: [String: Any],
                                rssi RSSI: NSNumber) {
-        let name = peripheral.name ?? advertisementData[CBAdvertisementDataLocalNameKey] as? String ?? ""
+        // After a prior connection iOS caches the GAP device name
+        // ("BlueNRG") as peripheral.name, hiding the advertising
+        // local name ("METALBOT-MCP").  Check both sources.
+        let cachedName = peripheral.name ?? ""
+        let advName = advertisementData[CBAdvertisementDataLocalNameKey] as? String ?? ""
 
-        guard name.contains("METALBOT") else { return }
+        guard cachedName.contains("METALBOT") || advName.contains("METALBOT") else { return }
 
         centralManager.stopScan()
         self.peripheral = peripheral
-        self.deviceName = name
+        self.deviceName = advName.isEmpty ? cachedName : advName
         self.rssi = RSSI.intValue
         status = .connecting
         peripheral.delegate = self
@@ -136,16 +143,15 @@ extension STM32BleManager: CBCentralManagerDelegate {
     public func centralManager(_ central: CBCentralManager,
                                didConnect peripheral: CBPeripheral) {
         status = .discovering
-        peripheral.discoverServices([controlServiceUUID])
+        // Discover all services — BlueNRG 16-bit UUIDs may not match
+        // the iOS CBUUID filter after reconnection
+        peripheral.discoverServices(nil)
     }
 
     public func centralManager(_ central: CBCentralManager,
                                didDisconnectPeripheral peripheral: CBPeripheral,
                                error: Error?) {
-        status = .disconnected
-        commandChar = nil
-        statusChar = nil
-        // Auto-reconnect after brief delay
+        cleanup()
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
             self?.scan()
         }
@@ -154,7 +160,7 @@ extension STM32BleManager: CBCentralManagerDelegate {
     public func centralManager(_ central: CBCentralManager,
                                didFailToConnect peripheral: CBPeripheral,
                                error: Error?) {
-        status = .disconnected
+        cleanup()
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
             self?.scan()
         }
