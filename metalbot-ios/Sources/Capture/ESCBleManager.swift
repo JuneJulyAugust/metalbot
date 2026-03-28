@@ -18,6 +18,7 @@ public struct ESCTelemetry {
     public let motorTemperature: Double
     public let voltage: Double
     public let updateFrequency: Double
+    public let messageCount: Int
     public let timestamp: Date
 }
 
@@ -42,6 +43,7 @@ public class ESCBleManager: NSObject, ObservableObject {
     // Frequency calculation
     private var lastPacketTimes: [Date] = []
     private let frequencyWindowSize = 10
+    public var messageCount = 0
     
     public override init() {
         super.init()
@@ -74,14 +76,25 @@ public class ESCBleManager: NSObject, ObservableObject {
         handshakeTimer = nil
     }
     
+    private func preferredWriteType(for characteristic: CBCharacteristic) -> CBCharacteristicWriteType {
+        if characteristic.properties.contains(.write) {
+            return .withResponse
+        }
+        if characteristic.properties.contains(.writeWithoutResponse) {
+            return .withoutResponse
+        }
+        return .withResponse
+    }
+    
     private func startHandshake() {
         cancelTimers()
         let initCommand: [UInt8] = [0x02, 0x01, 0x00, 0x00, 0x00, 0x03]
         var count = 0
+        let type = writeChar.flatMap { preferredWriteType(for: $0) } ?? .withResponse
         
         handshakeTimer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] _ in
             guard let self = self, let p = self.peripheral, let char = self.writeChar else { return }
-            p.writeValue(Data(initCommand), for: char, type: .withResponse)
+            p.writeValue(Data(initCommand), for: char, type: type)
             count += 1
             if count >= 10 {
                 self.handshakeTimer?.invalidate()
@@ -92,9 +105,10 @@ public class ESCBleManager: NSObject, ObservableObject {
     
     private func startPolling() {
         let pollCommand: [UInt8] = [0x02, 0x01, 0x04, 0x40, 0x84, 0x03]
+        let type = writeChar.flatMap { preferredWriteType(for: $0) } ?? .withResponse
         pollTimer = Timer.scheduledTimer(withTimeInterval: 0.12, repeats: true) { [weak self] _ in
             guard let self = self, let p = self.peripheral, let char = self.writeChar else { return }
-            p.writeValue(Data(pollCommand), for: char, type: .withResponse)
+            p.writeValue(Data(pollCommand), for: char, type: type)
         }
     }
     
@@ -169,8 +183,10 @@ extension ESCBleManager: CBPeripheralDelegate {
                 peripheral.setNotifyValue(true, for: char)
             }
         }
-        
-        if writeChar != nil && notifyChar != nil {
+    }
+    
+    public func peripheral(_ peripheral: CBPeripheral, didUpdateNotificationStateFor characteristic: CBCharacteristic, error: Error?) {
+        if characteristic.uuid == targetNotify && characteristic.isNotifying {
             status = .connected
             startHandshake()
         }
@@ -180,6 +196,7 @@ extension ESCBleManager: CBPeripheralDelegate {
         guard characteristic.uuid == targetNotify, let data = characteristic.value else { return }
         
         if let packet = TelemetryPacket(data) {
+            messageCount += 1
             let freq = updateFrequency()
             DispatchQueue.main.async {
                 self.telemetry = ESCTelemetry(
@@ -188,6 +205,7 @@ extension ESCBleManager: CBPeripheralDelegate {
                     motorTemperature: packet.motorTemperatureC,
                     voltage: packet.voltageV,
                     updateFrequency: freq,
+                    messageCount: self.messageCount,
                     timestamp: Date()
                 )
             }
@@ -218,7 +236,7 @@ private struct TelemetryPacket {
         rpm = Int((Double(erpmRaw) * 2.0) / Double(poleCount))
         
         let voltageRaw = (UInt16(bytes[29]) << 8) | UInt16(bytes[30])
-        voltageV = Double(voltageRaw) / 100.0
+        voltageV = Double(voltageRaw) / 10.0
     }
 
     private static func signed16BE(_ high: UInt8, _ low: UInt8) -> Int {
