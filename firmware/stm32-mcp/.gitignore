@@ -1,0 +1,26 @@
+# Build artifacts
+.mxproject
+build/
+*.bin
+*.elf
+*.hex
+*.map
+*.o
+*.a
+*.sym
+*.dis
+*.lst
+
+# CMake and build cache
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+ninja_log
+
+# CubeMX logs and backups
+*.bak
+*.old
+
+# OS-specific
+.DS_Store
