@@ -1,24 +1,28 @@
 # metalbot Achievement Index
 
-This file tracks concrete task outcomes and their supporting artifacts.
+This file tracks completed milestones and the artifacts that prove them.
 
-## Storage Conventions
+## Versioning Notes
 
-- Task evidence artifacts: `assets/achievements/<milestone>/YYYY-MM-DD_<slug>.png` or the relevant source/doc path when no screenshot exists.
-- Design/source art assets: `assets/design/<platform-or-domain>/...`
-- Walkthrough entries should reference files from this index.
+- iOS tags use `ios-v*`.
+- The legacy Raspberry Pi bridge uses the historical alias `mcp-v0.1.0` and the current hyphenated tag `raspberry-pi-mcp-v0.1.0`.
+- STM32 firmware tags use `stm32-mcp-v*`; `v0.1.0` marks the initial firmware scaffold, while BLE control continues on the `v0.2.0` and `v0.2.1-ble` line.
 
-## Achievements
+## Milestones
 
-| Date | Task | Outcome | Evidence |
-| --- | --- | --- | --- |
-| 2026-03-14 | MVP1 `1.1.1` + `1.1.2` | iOS app bring-up + LiDAR point-cloud capture and RGB debug display completed | `assets/achievements/mvp1/2026-03-14_lidar-pointcloud-rgb-capture-display.png` |
-| 2026-03-19 | MVP1 `1.4.1` + `1.4.2` | Bi-directional MCP bridge (RPi + iOS) with 1.5s timeout and bi-directional TUI dashboard | `metalbot-ios/CHANGELOG.md` `0.2.0`; `firmware/raspberry-pi-mcp/README.md` |
-| 2026-03-20 | MVP1 control path milestone | USB serial bridge, ACK logging, and Arduino actuation firmware for end-to-end control | `metalbot-ios/CHANGELOG.md` `0.3.0`; `firmware/raspberry-pi-mcp/README.md`; `firmware/metalbot-arduino/metalbot-arduino.ino` |
-| 2026-03-27 | STM32 Target Setup | STM32CubeCLT `stm32-mcp` project generation, `build.sh` artifact creation & flashing system | `firmware/stm32-mcp/CHANGELOG.md` `1.0.0` |
-| 2026-03-28 | STM32 BLE Reconnect Fix | iOS reconnect loop fixed by aligning STM32 GAP name with cached peripheral name and scanner matching | `.ai-context/walkthrough.md`; `metalbot-ios/CHANGELOG.md` `0.5.1`; `firmware/stm32-mcp/CHANGELOG.md` `0.2.1-ble` |
+| Date       | Tag                                                     | Milestone                                             | Outcome                                                                                                                      | Evidence                                                                                                                         |
+| ---------- | ------------------------------------------------------- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-03-14 | `ios-v0.1.0`                                            | LiDAR app bring-up                                    | SceneDepth capture, point-cloud projection, Metal rendering, and RGB debug layout landed on the phone.                       | `assets/achievements/mvp1/2026-03-14_lidar-pointcloud-rgb-capture-display.png`; `metalbot-ios/CHANGELOG.md` `0.1.0`              |
+| 2026-03-19 | `ios-v0.2.0` / `mcp-v0.1.0` / `raspberry-pi-mcp-v0.1.0` | Diagnostics bridge and Raspberry Pi WiFi control path | iPhone diagnostics, bi-directional UDP heartbeats, and the first Raspberry Pi bridge were established.                       | `metalbot-ios/CHANGELOG.md` `0.2.0`; `firmware/raspberry-pi-mcp/README.md`                                                       |
+| 2026-03-20 | `ios-v0.3.0`                                            | End-to-end Pi + Arduino control path                  | USB serial forwarding, ACK logging, and Arduino actuation completed the legacy control loop.                                 | `metalbot-ios/CHANGELOG.md` `0.3.0`; `firmware/raspberry-pi-mcp/README.md`; `firmware/metalbot-arduino/metalbot-arduino.ino`     |
+| 2026-03-22 | `ios-v0.4.0`                                            | ARKit pose and trajectory view                        | Visual-inertial pose tracking, trajectory visualization, and landscape controls landed as a standalone perception milestone. | `metalbot-ios/CHANGELOG.md` `0.4.0`                                                                                              |
+| 2026-03-27 | `ios-v0.5.0`                                            | Direct ESC telemetry                                  | The iPhone connected straight to the ESC and displayed live motor and temperature telemetry.                                 | `metalbot-ios/CHANGELOG.md` `0.5.0`; `metalbot-ios/Sources/Views/MCPTestView.swift`                                              |
+| 2026-03-28 | `ios-v0.5.1`                                            | STM32 reconnect stability                             | Reconnect-safe BLE scanning matched the cached and advertising names on the STM32 side.                                      | `metalbot-ios/CHANGELOG.md` `0.5.1`; `metalbot-ios/Sources/Views/HomeView.swift`; `metalbot-ios/Sources/Views/MCPTestView.swift` |
+| 2026-03-27 | `stm32-mcp-v0.1.0`                                      | Initial STM32 firmware scaffold                       | The first STM32 target, build pipeline, and command-line flashing workflow were established.                                 | `firmware/stm32-mcp/CHANGELOG.md` `0.1.0`; `firmware/stm32-mcp/README.md`                                                        |
+| 2026-03-27 | `stm32-mcp-v0.2.0`                                      | BLE control service                                   | BlueNRG BLE control service, PWM actuation, and timeout behavior were added to the STM32 path.                               | `firmware/stm32-mcp/CHANGELOG.md` `0.2.0`; `firmware/stm32-mcp/README.md`                                                        |
+| 2026-03-28 | `stm32-mcp-v0.2.1-ble`                                  | Reconnect-safe BLE naming                             | GAP naming and advertising were aligned so the iPhone reconnect flow stays stable.                                           | `firmware/stm32-mcp/CHANGELOG.md` `0.2.1-ble`; `metalbot-ios/README.md`                                                          |
 
-## App Branding Assets
+## Branding
 
 - iOS app icon source: `assets/design/ios/app-icon/metalbot_icon_source.png`
 - Compiled app icon target: `metalbot-ios/Resources/Assets.xcassets/AppIcon.appiconset/icon-1024.png`
