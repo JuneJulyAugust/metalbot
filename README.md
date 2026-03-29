@@ -44,9 +44,9 @@ Metalbot is the public home for my autonomous RC car project. The active low-lev
 - `assets/README.md`: project assets and design sources
 - `assets/design/metalbot-architecture.drawio`: editable system architecture diagram source
 
-### Historical prototypes
+### Firmware
 
-- `metalbot-mcp/README.md`: archived Raspberry Pi bridge
+- `firmware/raspberry-pi-mcp/README.md`: Raspberry Pi firmware bridge, UDP heartbeat, serial forwarding, and TUI dashboard
 - `firmware/learning-motor-ctrl/README.md`: archived Arduino motor-control prototype
 
 ## Build and Flash

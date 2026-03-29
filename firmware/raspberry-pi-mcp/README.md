@@ -1,8 +1,8 @@
-# metalbot-mcp
+# raspberry-pi-mcp
 
-Raspberry Pi 4B bridge application for `metalbot`.
+Raspberry Pi 4B firmware for `metalbot`.
 
-This application acts as the "MCP High-Level" bridge between the iPhone (Brain) and the Arduino (MCP Low-Level). It provides a real-time TUI dashboard for monitoring communication health and manual control inputs.
+This firmware acts as the "MCP High-Level" bridge between the iPhone (Brain) and the Arduino (MCP Low-Level). It provides a real-time TUI dashboard for monitoring communication health and manual control inputs.
 
 ## Features
 
@@ -45,7 +45,7 @@ This application acts as the "MCP High-Level" bridge between the iPhone (Brain) 
 Use the provided `deploy.sh` script to sync and build on your Raspberry Pi:
 
 ```bash
-cd metalbot-mcp
+cd firmware/raspberry-pi-mcp
 chmod +x deploy.sh
 ./deploy.sh pi  # Replace 'pi' with your Pi's IP or SSH alias
 ```
@@ -55,7 +55,7 @@ chmod +x deploy.sh
 Run the built executable on the Pi:
 
 ```bash
-~/metalbot-mcp/build/metalbot-mcp
+~/raspberry-pi-mcp/build/raspberry-pi-mcp
 ```
 
 ## Architecture

@@ -20,9 +20,9 @@ struct HomeView: View {
                     }
                 }
                 
-                Section(header: Text("Diagnostics")) {
+                Section(header: Text("CONTROL")) {
                     NavigationLink(destination: MCPTestView()) {
-                        Label("MCP Interface", systemImage: "cpu")
+                        Label("Raspberry Pi WiFi", systemImage: "cpu")
                             .font(.headline)
                             .padding(.vertical, 4)
                     }

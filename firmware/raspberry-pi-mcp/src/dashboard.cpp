@@ -13,7 +13,7 @@
 
 using namespace ftxui;
 
-namespace mcp {
+namespace raspberry_pi_mcp {
 
 namespace {
 
@@ -138,4 +138,4 @@ void runDashboard(MCPStatus& status) {
     screen.Loop(component);
 }
 
-}  // namespace mcp
+}  // namespace raspberry_pi_mcp

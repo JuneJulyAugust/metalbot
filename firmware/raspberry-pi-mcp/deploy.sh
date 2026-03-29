@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Deployment script for metalbot-mcp (Raspberry Pi bridge)
+# Deployment script for raspberry-pi-mcp firmware
 # Usage: ./deploy.sh [pi-hostname-or-ip]
 
 PI_HOST="${1:-pi}"
-REMOTE_DIR="~/metalbot-mcp"
+REMOTE_DIR="~/raspberry-pi-mcp"
 
 # Get the absolute path to the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 echo "==> Syncing source from $SCRIPT_DIR to $PI_HOST:$REMOTE_DIR..."
 
-# Syncing only the MCP source files, avoiding build artifacts and local git
+# Syncing only the firmware source files, avoiding build artifacts and local git
 # Note: rsync source ends with / to sync contents into the remote dir
 rsync -avz --delete \
     --exclude 'build/' \
@@ -34,4 +34,4 @@ ssh "$PI_HOST" "
     make -j\$(nproc 2>/dev/null || echo 4)
 "
 
-echo "==> Done. Run with: ssh $PI_HOST \"$REMOTE_DIR/build/metalbot-mcp\""
+echo "==> Done. Run with: ssh $PI_HOST \"$REMOTE_DIR/build/raspberry-pi-mcp\""

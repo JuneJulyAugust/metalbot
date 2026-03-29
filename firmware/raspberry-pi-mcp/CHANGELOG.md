@@ -1,4 +1,4 @@
-# Changelog - metalbot-mcp
+# Changelog - raspberry-pi-mcp
 
 All notable changes to this project will be documented in this file.
 

@@ -13,7 +13,7 @@ struct MCPTestView: View {
                         DeviceMiniCard(name: viewModel.iphoneName, ip: viewModel.iphoneIP, icon: "brain.head.profile", color: .purple, label: "LOCAL (Brain)")
                         Image(systemName: "arrow.left.and.right")
                             .foregroundStyle(.secondary)
-                        DeviceMiniCard(name: "metalbot-mcp", ip: "192.168.2.189", icon: "cpu", color: .blue, label: "REMOTE (MCP)")
+                        DeviceMiniCard(name: "raspberry-pi-mcp", ip: "192.168.2.189", icon: "cpu", color: .blue, label: "REMOTE (MCP)")
                     }
                     .padding(.horizontal)
 

@@ -10,7 +10,7 @@
 #include <memory>
 #include <thread>
 
-namespace mcp {
+namespace raspberry_pi_mcp {
 
 void runSerialForwarder(MCPStatus& status) {
     asio::io_context io;
@@ -91,4 +91,4 @@ void runSerialForwarder(MCPStatus& status) {
     }
 }
 
-}  // namespace mcp
+}  // namespace raspberry_pi_mcp

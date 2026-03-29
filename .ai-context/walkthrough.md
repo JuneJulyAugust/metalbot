@@ -213,14 +213,14 @@ Add entries only after real coding, integration, or testing work reveals valuabl
 - **Issue observed:** The firmware README described timeout neutralization, but the sketch only logs a warning when no command arrives.
 - **Root cause:** `neutralize()` is intentionally commented out in the sketch for debugging.
 - **Resolution:** Updated the firmware README to match the current warning-only timeout behavior.
-- **Validation:** The implemented protocol and timeout behavior are reflected in `metalbot-mcp/CHANGELOG.md` `0.2.0` and `firmware/metalbot-arduino/metalbot-arduino.ino`.
+- **Validation:** The implemented protocol and timeout behavior are reflected in `firmware/raspberry-pi-mcp/README.md` and `firmware/metalbot-arduino/metalbot-arduino.ino`.
 - **Follow-up:** Revisit timeout neutralization before vehicle-level driving tests.
 
 ### 2026-03-19 - MVP1 Step 2: Raspberry Pi MCP Bridge and iOS Diagnostics UI
 
 - **Context:** Transition from STM32 to Raspberry Pi 4B + Arduino architecture for motor control.
 - **What we built/tested:**
-  - Developed `metalbot-mcp`: a C++17 application on Raspberry Pi using `Asio` for event-driven UDP networking and `FTXUI` for a TUI dashboard.
+  - Developed `raspberry-pi-mcp`: a C++17 application on Raspberry Pi using `Asio` for event-driven UDP networking and `FTXUI` for a TUI dashboard.
   - Implemented bi-directional UDP heartbeats (1Hz) between iPhone and Pi with a synchronized 1.5-second connection timeout.
   - Built a car-style TUI on the Pi with stationary, bi-directional meters for steering/motor power (Blue/Left for negative, Green/Right for positive).
   - Added "MCP Diagnostics" view on iOS with real-time status, network metrics (Sent/Received counts/times), and manual sliders for remote control.

@@ -5,7 +5,7 @@
 #include <iomanip>
 #include <sstream>
 
-namespace mcp {
+namespace raspberry_pi_mcp {
 
 std::optional<ControlCommand> parseControlCommand(std::string_view msg) {
     // Expected format: "cmd:s=<float>,m=<float>"
@@ -63,4 +63,4 @@ std::string getCurrentTime() {
     return ss.str();
 }
 
-}  // namespace mcp
+}  // namespace raspberry_pi_mcp

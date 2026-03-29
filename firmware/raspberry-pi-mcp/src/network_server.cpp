@@ -5,7 +5,7 @@
 #include <iostream>
 #include <thread>
 
-namespace mcp {
+namespace raspberry_pi_mcp {
 
 void runNetworkServer(MCPStatus& status, uint16_t port) {
     using asio::ip::udp;
@@ -49,4 +49,4 @@ void runNetworkServer(MCPStatus& status, uint16_t port) {
     }
 }
 
-}  // namespace mcp
+}  // namespace raspberry_pi_mcp

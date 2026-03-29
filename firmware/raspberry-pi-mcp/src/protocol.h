@@ -4,7 +4,7 @@
 #include <string>
 #include <string_view>
 
-namespace mcp {
+namespace raspberry_pi_mcp {
 
 /// Pure value type representing a steering + motor command.
 struct ControlCommand {
@@ -42,4 +42,4 @@ std::string formatHeartbeat(int seq);
 /// Returns current wall-clock time as "HH:MM:SS".
 std::string getCurrentTime();
 
-}  // namespace mcp
+}  // namespace raspberry_pi_mcp

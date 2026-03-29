@@ -8,12 +8,12 @@
 
 #include <asio.hpp>
 
-namespace mcp {
+namespace raspberry-pi-mcp {
 
 /// Immutable snapshot of system state for rendering.
 /// Captured under lock, consumed without holding any mutex.
 struct StatusSnapshot {
-    std::string pi_name = "metalbot-mcp (Pi 4B)";
+    std::string pi_name = "raspberry-pi-mcp (Pi 4B)";
     std::string pi_ip = "192.168.2.189";
     std::string iphone_name = "Waiting for Brain...";
     std::string iphone_ip = "0.0.0.0";
@@ -161,4 +161,4 @@ private:
     std::string last_serial_ack_ = "None";
 };
 
-}  // namespace mcp
+}  // namespace raspberry-pi-mcp

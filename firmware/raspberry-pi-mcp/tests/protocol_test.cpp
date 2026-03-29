@@ -5,7 +5,7 @@
 #include <cmath>
 #include <string>
 
-using namespace mcp;
+using namespace raspberry_pi_mcp;
 
 // ---------------------------------------------------------------------------
 // parseControlCommand

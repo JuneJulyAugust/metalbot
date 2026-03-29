@@ -87,7 +87,7 @@ Successfully implemented and verified the full control path from the iPhone brai
     - Implemented a normalized `-1.0 to 1.0` serial protocol for steering and motor power.
     - Included safety features: ESC arming sequence and heartbeat monitoring (currently disabled for debugging).
     - Isolated toolchain: Self-contained `arduino-cli` setup on the Raspberry Pi for easy deployment.
-2.  **MCP Serial Integration**: Updated the C++ bridge on the Raspberry Pi (`metalbot-mcp`) to forward UDP commands from the iPhone to the Arduino via USB Serial.
+2.  **MCP Serial Integration**: Updated the C++ bridge on the Raspberry Pi (`raspberry-pi-mcp`) to forward UDP commands from the iPhone to the Arduino via USB Serial.
     - Added robustness features: Auto-reconnect on I/O errors, 3.5s boot delay handling, and serial buffer flushing.
     - Integrated real-time serial feedback into the FTXUI dashboard.
 3.  **Deployment & Testing**: Established robust `deploy.sh` scripts for both the Arduino and MCP modules, enabling seamless updates from the development machine to the Pi.
