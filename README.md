@@ -8,7 +8,7 @@
 
 LiDAR, RGB, and VIO on the phone. BLE command handling, watchdog safety, and PWM actuation on the STM32L475 IoT board.
 
-Metalbot is the public home for my autonomous RC car project. The active low-level controller is now an STM32L475 Discovery Kit IoT Node (`B-L475E-IOT01A`), which replaced the earlier Raspberry Pi + Arduino bridge. The architecture diagram is maintained in Draw.io and exported as a GitHub-friendly PNG. The iPhone handles perception, estimation, planning, and the operator UI, while the STM32 board drives steering and throttle directly. The name comes from Apple Metal, which matches the long-term plan to lean on GPU and compute paths on the iPhone.
+Metalbot is the public home for my autonomous RC car project. The active low-level controller is now an STM32L475 Discovery Kit IoT Node (`B-L475E-IOT01A`). The legacy Raspberry Pi WiFi bridge and Arduino actuation path remain in the repo for compatibility and bench testing. The architecture diagram is maintained in Draw.io and exported as a GitHub-friendly PNG. The iPhone handles perception, estimation, planning, and the operator UI, while the STM32 board drives steering and throttle directly. The name comes from Apple Metal, which matches the long-term plan to lean on GPU and compute paths on the iPhone.
 
 ![Metalbot system architecture](assets/design/metalbot-architecture.png)
 
@@ -46,7 +46,7 @@ Metalbot is the public home for my autonomous RC car project. The active low-lev
 
 ### Firmware
 
-- `firmware/raspberry-pi-mcp/README.md`: Raspberry Pi firmware bridge, UDP heartbeat, serial forwarding, and TUI dashboard
+- `firmware/raspberry-pi-mcp/README.md`: Raspberry Pi WiFi bridge, UDP heartbeat, serial forwarding, and TUI dashboard
 - `firmware/learning-motor-ctrl/README.md`: archived Arduino motor-control prototype
 
 ## Build and Flash

@@ -1,8 +1,8 @@
 # raspberry-pi-mcp
 
-Raspberry Pi 4B firmware for `metalbot`.
+Raspberry Pi WiFi bridge firmware for `metalbot`.
 
-This firmware acts as the "MCP High-Level" bridge between the iPhone (Brain) and the Arduino (MCP Low-Level). It provides a real-time TUI dashboard for monitoring communication health and manual control inputs.
+This firmware is the legacy Raspberry Pi WiFi bridge between the iPhone app and the Arduino actuation path. It provides a real-time TUI dashboard for monitoring communication health and manual control inputs.
 
 ## Features
 
@@ -10,14 +10,14 @@ This firmware acts as the "MCP High-Level" bridge between the iPhone (Brain) and
 - **Dashboard UI:** Terminal UI built with `FTXUI` featuring bi-directional car-style meters.
 - **Health Monitoring:** 1.5-second watchdog timeout for connection status tracking.
 - **Identity Display:** Real-time display of local (Pi) and remote (iPhone) network identities.
-- **Serial Bridge:** Automatic USB serial forwarding to the Arduino with reconnect, boot sync, and ACK logging.
+- **Serial Bridge:** Automatic USB serial forwarding to the Arduino actuation path with reconnect, boot sync, and ACK logging.
 
 ## Requirements
 
 ### Hardware
 
 - Raspberry Pi 4B.
-- Connected Arduino (Low-level MCP) via Serial.
+- Connected Arduino actuation path via Serial.
 
 ### Software
 
@@ -61,7 +61,7 @@ Run the built executable on the Pi:
 ## Architecture
 
 ```text
-iPhone (Brain) <---- UDP (1.0 Hz HB) ----> Pi (MCP Bridge) <---- USB Serial + ACKs ----> Arduino (Low-level)
+iPhone (Brain) <---- UDP (1.0 Hz HB) ----> Pi (WiFi Bridge) <---- USB Serial + ACKs ----> Arduino actuation path
 ```
 
 - **Port:** 8888 (UDP).

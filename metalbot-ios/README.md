@@ -1,6 +1,6 @@
 # metalbot-ios
 
-`metalbot-ios` is the iPhone app for `metalbot`. It handles LiDAR capture, RGB + point-cloud debug rendering, the MCP UDP bridge, and the diagnostics UI.
+`metalbot-ios` is the iPhone app for `metalbot`. It handles LiDAR capture, RGB + point-cloud debug rendering, the Raspberry Pi WiFi bridge UI, and the STM32 direct-control UI.
 
 ## First-Time Setup
 
@@ -55,5 +55,5 @@ The project is already configured for automatic signing in `project.yml`, so the
 
 - `project.yml` is the source of truth for signing and build settings.
 - `build.sh` runs `xcodegen generate`, builds, installs, and launches the app.
-- The STM32 direct-control screen uses reconnect-safe BLE scanning against `METALBOT-MCP`.
+- The STM32 direct-control screen uses reconnect-safe BLE scanning against the STM32 BLE peripheral `METALBOT-MCP`.
 - If launch still fails after install, the script prints a trust/signing hint in the terminal.

@@ -11,6 +11,13 @@ Add entries only after real coding, integration, or testing work reveals valuabl
 - Keep each entry short and technical.
 - Include reproducible evidence when possible (logs, metrics, trace IDs, test names).
 
+## Terminology
+
+- Current primary path: iPhone app -> STM32 control board.
+- Legacy path: Raspberry Pi WiFi bridge.
+- Historical entries below may still use older MCP wording where they describe work done before the rename.
+- BLE device name `METALBOT-MCP` is retained for STM32 compatibility.
+
 ## Entry Template
 
 ### YYYY-MM-DD - Short Title
@@ -63,7 +70,7 @@ Add entries only after real coding, integration, or testing work reveals valuabl
 ### 2026-03-27 - Direct iPhone-to-ESC BLE Telemetry Integration
 
 - **Context:** Pivoting the ESC telemetry architecture to connect directly to the iPhone instead of routing through the Raspberry Pi.
-- **What we built/tested:** 
+- **What we built/tested:**
   - Ported the reverse-engineered Snail ESC BLE protocol logic from the macOS prototype (`esc_app.swift`) into a new `ESCBleManager` class within the iOS app.
   - Added Combine `@Published` properties for real-time `ESCTelemetry` updates (RPM, voltage, temperatures, message count, and update frequency in Hz).
   - Integrated `ESCBleManager` into `MCPTestViewModel` to manage the BLE connection lifecycle alongside the UDP socket.
@@ -79,7 +86,7 @@ Add entries only after real coding, integration, or testing work reveals valuabl
 ### 2026-03-27 - ESC Telemetry Prototype Cleanup and Documentation
 
 - **Context:** Finalizing the macOS BLE scanner prototype for reverse-engineering.
-- **What we built/tested:** 
+- **What we built/tested:**
   - Cleaned up `prototypes/esc_telemetry/` by removing legacy Python and shell scripts.
   - Retained the macOS Swift application (`ESCScanner.app`), core logic (`esc_app.swift`), and build scaffolding.
   - Added a dedicated `README.md` for the prototype and updated the main project documentation.
@@ -92,7 +99,7 @@ Add entries only after real coding, integration, or testing work reveals valuabl
 ### 2026-03-24 - ESC Bluetooth Telemetry Reverse Engineering
 
 - **Context:** Attempting to read real-time velocity telemetry from the Snail ESC via Bluetooth (BLE) to be used by the Raspberry Pi.
-- **What we built/tested:** 
+- **What we built/tested:**
   - Iterated through Python `bleak` scripts on macOS and Raspberry Pi to discover the ESC (`ESDM_4181FB`).
   - Pivoted to a native Swift `CoreBluetooth` macOS app due to Linux/BlueZ stability and timeout issues.
   - Decompiled the official Android APK (`Snail ESC`) using `jadx` to reverse-engineer the proprietary BLE protocol.
@@ -175,7 +182,7 @@ Add entries only after real coding, integration, or testing work reveals valuabl
 
 ### 2026-03-23 - MVP1 Step 5: Architectural Refactoring for Testability (SRP/DIP)
 
-- **Context:** Improving the maintainability and testability of the MCP bridge and iPhone network layers.
+- **Context:** Improving the maintainability and testability of the legacy Raspberry Pi WiFi bridge and iPhone network layers.
 - **What we built/tested:** Decomposed monolithic ViewModels into transport (`MCPConnection`), protocol logic (`MCPProtocol`), and state management. Implemented full unit test coverage for the network protocol on both iOS (XCTest) and MCP (GoogleTest).
 - **Issue observed:** Protocol bugs were hard to debug across the Wi-Fi link without a hardware-in-the-loop setup.
 - **Root cause:** Protocol parsing logic was tightly coupled to networking and UI code.
@@ -184,7 +191,7 @@ Add entries only after real coding, integration, or testing work reveals valuabl
 - **Follow-up:** Keep protocol logic isolated as new telemetry fields (ESC speed) are added.
 
 ### 2026-03-22 - MVP1 Step 4: ARKit 6D Pose Integration and Visualization
-...
+
 - **Context:** Implementing the new pose estimation module based on the ARKit VIO pivot.
 - **What we built/tested:** Created `ARKitPoseViewModel` configuring an `ARWorldTrackingConfiguration` with `.gravity` alignment, `.sceneDepth`, `.mesh` reconstruction, and vertical/horizontal plane detection for maximum accuracy. Built a custom, forced-landscape `ARKitPoseView` featuring an interactive 2D trajectory canvas, auto-zoom, and a Jet colormap for history playback.
 - **Issue observed:** (1) Initial drift was high when moving the phone before ARKit fully initialized. (2) Standard iOS views cut off text around the physical notch when forced into landscape while the device was held vertically.
@@ -201,14 +208,14 @@ Add entries only after real coding, integration, or testing work reveals valuabl
 - **Root cause:** Physics of low-cost MEMS IMUs; lack of external reference leads to unbounded error growth.
 - **Resolution:** Updated `plan.md` and `task.md` to pivot:
   - **Pose**: Use ARKit's Visual-Inertial Odometry (VIO) for 6D position and orientation.
-  - **Velocity**: Use Raspberry Pi to connect to the ESC via Bluetooth for direct RPM/speed telemetry.
+  - **Velocity**: Use the legacy Raspberry Pi WiFi bridge to connect to the ESC via Bluetooth for direct RPM/speed telemetry.
   - **New Task**: Add `ARKitPoseView` to the iOS app to validate tracking stability before planner integration.
 - **Validation:** N/A (Research and Plan update).
-- **Follow-up:** Implement `ARKitPoseView` and establish Raspberry Pi <-> ESC Bluetooth communication.
+- **Follow-up:** Implement `ARKitPoseView` and establish legacy Raspberry Pi WiFi <-> ESC Bluetooth communication.
 
 ### 2026-03-20 - MVP1 Step 3: Pi serial bridge + Arduino actuation path
 
-- **Context:** Raspberry Pi bridge and Arduino firmware for low-level actuation.
+- **Context:** Legacy Raspberry Pi WiFi bridge and Arduino firmware for low-level actuation.
 - **What we built/tested:** Implemented USB serial forwarding from the Pi to the Arduino with automatic reconnect, 3.5-second boot sync, serial buffer flushing, and ACK feedback in the dashboard. The Arduino firmware accepts normalized steering/motor commands and maps them to servo and ESC outputs.
 - **Issue observed:** The firmware README described timeout neutralization, but the sketch only logs a warning when no command arrives.
 - **Root cause:** `neutralize()` is intentionally commented out in the sketch for debugging.
@@ -218,12 +225,12 @@ Add entries only after real coding, integration, or testing work reveals valuabl
 
 ### 2026-03-19 - MVP1 Step 2: Raspberry Pi MCP Bridge and iOS Diagnostics UI
 
-- **Context:** Transition from STM32 to Raspberry Pi 4B + Arduino architecture for motor control.
+- **Context:** Transition from STM32 direct-control work to the legacy Raspberry Pi 4B + Arduino architecture for motor control.
 - **What we built/tested:**
   - Developed `raspberry-pi-mcp`: a C++17 application on Raspberry Pi using `Asio` for event-driven UDP networking and `FTXUI` for a TUI dashboard.
   - Implemented bi-directional UDP heartbeats (1Hz) between iPhone and Pi with a synchronized 1.5-second connection timeout.
   - Built a car-style TUI on the Pi with stationary, bi-directional meters for steering/motor power (Blue/Left for negative, Green/Right for positive).
-  - Added "MCP Diagnostics" view on iOS with real-time status, network metrics (Sent/Received counts/times), and manual sliders for remote control.
+  - Added "Raspberry Pi WiFi" view on iOS with real-time status, network metrics (Sent/Received counts/times), and manual sliders for remote control.
   - Fixed iOS IP discovery and macOS-specific API build issues.
 - **Issue observed:** (1) Layout jitter in TUI when meters were growing dynamically. (2) Heartbeat RX counter on Pi was erroneously counting control commands. (3) iOS build error on `Host.current().localizedName`.
 - **Root cause:** (1) Flexible-width elements caused the center point to shift; fixed with explicit container sizing. (2) Packet parsing didn't distinguish by prefix; fixed with `hb_iphone:`/`cmd:` separation. (3) `Host` API is macOS-only; replaced with `UIDevice`.

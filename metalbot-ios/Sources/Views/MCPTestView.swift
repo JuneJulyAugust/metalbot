@@ -13,7 +13,7 @@ struct MCPTestView: View {
                         DeviceMiniCard(name: viewModel.iphoneName, ip: viewModel.iphoneIP, icon: "brain.head.profile", color: .purple, label: "LOCAL (Brain)")
                         Image(systemName: "arrow.left.and.right")
                             .foregroundStyle(.secondary)
-                        DeviceMiniCard(name: "raspberry-pi-mcp", ip: "192.168.2.189", icon: "cpu", color: .blue, label: "REMOTE (MCP)")
+                        DeviceMiniCard(name: "raspberry-pi-mcp", ip: "192.168.2.189", icon: "cpu", color: .blue, label: "Raspberry Pi WiFi")
                     }
                     .padding(.horizontal)
 
@@ -173,7 +173,7 @@ struct MCPTestView: View {
                         HStack {
                             Text("iOS Brain v0.2.0")
                             Spacer()
-                            Text("MCP Pi v0.1.0")
+                            Text("Raspberry Pi WiFi v0.1.0")
                         }
                         .font(.caption2.monospaced())
                         .foregroundStyle(.secondary)
@@ -183,7 +183,7 @@ struct MCPTestView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("WHAT'S NEW (v0.2.0)")
                                 .font(.caption.bold())
-                            Text("• Bi-directional MCP bridge over UDP\n• Real-time network metrics and 1.5s timeout\n• New manual control dashboard with bi-directional meters")
+                            Text("• Bi-directional Raspberry Pi WiFi bridge over UDP\n• Real-time network metrics and 1.5s timeout\n• New manual control dashboard with bi-directional meters")
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
                         }
@@ -193,7 +193,7 @@ struct MCPTestView: View {
                 .padding(.vertical)
             }
             .background(Color(.systemGroupedBackground))
-            .navigationTitle("MCP Diagnostics")
+            .navigationTitle("Raspberry Pi WiFi")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {

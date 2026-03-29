@@ -1,8 +1,8 @@
 # metalbot Task Backlog
 
-This backlog is hierarchical and execution-focused. Complete MVP1 before expanding scope.
+This backlog is hierarchical and execution-focused. Primary STM32 work comes first; the Raspberry Pi WiFi bridge remains only for compatibility, bench testing, and transition support.
 
-## 1. MVP1 - LiDAR-only drive straight + obstacle stop (active)
+## 1. MVP1 - LiDAR-first closed loop + obstacle stop (active)
 
 ### 1.1 Foundation and app bring-up
 
@@ -21,14 +21,14 @@ This backlog is hierarchical and execution-focused. Complete MVP1 before expandi
 
 ### 1.2 Estimation component
 
-#### 1.2.1 ARKit Pose and ESC Velocity
+#### 1.2.1 ARKit pose and ESC velocity
 
 - [x] Define `VehicleState` model (`pose: SIMD-float4x4`, `speed_mps`, `timestamp`).
 - [x] Implement ARKit `worldTracking` session to extract 6D camera pose.
 - [x] Add `ARKitPoseView` to demonstrate and validate 6D pose tracking.
 - [x] Implement ARKit World Map management (save/load/management UI) for persistent localization.
-- [x] Refactor MCP and iOS ViewModels for testability (SRP/DIP).
-- [ ] Integrate ESC velocity telemetry into the `VehicleState` (sourced from MCP).
+- [x] Refactor iOS and transport ViewModels for testability (SRP/DIP).
+- [ ] Integrate ESC velocity telemetry into `VehicleState` and planner feedback.
 
 ### 1.3 Planner and control component
 
@@ -49,7 +49,14 @@ This backlog is hierarchical and execution-focused. Complete MVP1 before expandi
 - [ ] Ensure planner stop signal has higher priority than normal speed command.
 - [ ] Ensure `estop` command path has strict priority over all drive commands.
 
-### 1.4 Raspberry Pi + Arduino MCP interface
+#### 1.3.3 STM32 direct BLE control
+
+- [x] Generate STM32CubeMX project for STM32L475 target (`stm32-mcp`).
+- [x] Develop command-line build and flash script `build.sh` using STM32CubeCLT.
+- [x] Establish CMake presets and correct `.gitignore` & Git LFS for STM32 drivers.
+- [x] Fix the STM32/iOS BLE reconnect loop by aligning GAP device naming with iOS cache behavior.
+
+### 1.4 Legacy Raspberry Pi WiFi bridge
 
 #### 1.4.1 Protocol and transport implementation
 
@@ -59,22 +66,14 @@ This backlog is hierarchical and execution-focused. Complete MVP1 before expandi
 - [x] Implement USB serial bridge between Raspberry Pi and Arduino.
 - [x] Implement Arduino firmware for PWM/servo command execution.
 - [x] Implement Bluetooth LE connection from macOS to ESC for telemetry reverse-engineering.
-- [x] Pivot: Migrate ESC BLE telemetry directly to the iPhone to bypass Raspberry Pi hop.
+- [x] Pivot: Migrate ESC BLE telemetry directly to the iPhone to bypass the Raspberry Pi hop.
 
-#### 1.4.2 MCP integration contract
+#### 1.4.2 Bridge integration contract
 
-- [x] Implement iPhone heartbeat (1Hz) and 1.5s timeout logic.
-- [x] Implement Raspberry Pi heartbeat (1Hz) and 1.5s timeout logic.
-- [x] Implement "MCP Diagnostics" view on iOS for real-time monitoring.
+- [x] Implement iPhone heartbeat (1 Hz) and 1.5 s timeout logic.
+- [x] Implement Raspberry Pi heartbeat (1 Hz) and 1.5 s timeout logic.
+- [x] Implement `Raspberry Pi WiFi` view on iOS for real-time monitoring.
 - [ ] Define the Pi<->Arduino watchdog semantics and decide whether timeout should neutralize outputs or only log during debugging.
-
-#### 1.4.3 STM32 MCP Transition
-
-- [x] Generate STM32CubeMX project for STM32L475 target (`stm32-mcp`).
-- [x] Develop command-line build and flash script `build.sh` using STM32CubeCLT.
-- [x] Establish CMake presets and correct `.gitignore` & Git LFS for STM32 drivers.
-- [x] Fix the STM32/iOS BLE reconnect loop by aligning GAP device naming with iOS cache behavior.
-
 
 ### 1.5 Validation and exit criteria
 
@@ -107,7 +106,7 @@ This backlog is hierarchical and execution-focused. Complete MVP1 before expandi
 
 ## 4. Decision backlog
 
-### 4.1 Pending product/engineering decisions
+### 4.1 Pending product and engineering decisions
 
 #### 4.1.1 Open items
 
@@ -115,6 +114,4 @@ This backlog is hierarchical and execution-focused. Complete MVP1 before expandi
 - [ ] Decide whether BLE remains worth keeping as a prototype transport after Wi-Fi UDP is validated on vehicle.
 - [ ] Finalize stop-policy defaults after initial braking tests.
 - [ ] Finalize controller loop rate after latency and stability measurements.
-validated on vehicle.
-- [ ] Finalize stop-policy defaults after initial braking tests.
-- [ ] Finalize controller loop rate after latency and stability measurements.
+- [ ] Decide whether any legacy Pi/Arduino code should remain beyond maintenance support.

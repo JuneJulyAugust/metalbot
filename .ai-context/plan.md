@@ -1,134 +1,68 @@
-# metalbot Plan (Invariant v0)
+# metalbot Plan
 
-This plan is high-level and stable for now. We refine internals only after implementation evidence.
+This file defines the stable system contract. `task.md` tracks unfinished work, and `walkthrough.md` records implementation evidence.
 
-## 1. Identity and Scope
+## 1. Architecture Snapshot
 
-### 1.1 Project identity
+- Primary path: iPhone app -> STM32 control board -> vehicle hardware.
+- The iPhone owns perception, estimation, planning, and the operator UI.
+- The STM32 owns low-latency command intake, watchdog behavior, and PWM actuation.
+- ESC telemetry returns directly to the iPhone over BLE.
+- Legacy path: Raspberry Pi WiFi bridge -> Arduino actuation path.
+- The legacy bridge stays in the repo for compatibility, bench testing, and transition support.
 
-#### 1.1.1 Name and meaning
+## 2. MVP1
 
-- Project name: `metalbot`.
-- Name source: Apple Metal API focus for high-performance on-device perception and compute.
+### 2.1 Goal
 
-### 1.2 Target platform
+- Drive straight, hold target speed, and stop safely when the path is blocked or the control link becomes stale.
 
-#### 1.2.1 Hardware baseline
+### 2.2 System Shape
 
-- iPhone 13 Pro / iPhone 13 Pro Max.
-- RC chassis with steering/throttle actuation.
-- Raspberry Pi 4B + Arduino MCP for high-level communication and low-level command execution.
+- Perception runs on the iPhone and uses LiDAR plus RGB to understand the environment.
+- Pose and telemetry stay on the iPhone side so the planner sees one coherent state snapshot.
+- The STM32 acts as the primary low-level controller and should remain simple, deterministic, and easy to recover.
+- Safety overrides motion: stop signals and estop always outrank normal drive commands.
+- The legacy Raspberry Pi WiFi bridge remains available while the STM32 path is validated on vehicle hardware.
 
-### 1.3 Environment assumptions
+### 2.3 Operating Assumptions
 
-#### 1.3.1 MVP1 operating conditions
+- Indoor flat floor.
+- Repeatable launch and reconnect behavior.
+- Minimal operator intervention during a run.
+- Safe stop behavior when sensor data or link health becomes stale.
 
-- Indoor flat floor only.
-- Obstacle classes for MVP1 include both large and small/near-field obstacles.
-- Fixed phone mount planned via 3D-printed bracket.
+### 2.4 MVP1 Success Definition
 
-## 2. Product Milestones
+- The vehicle can hold a target speed on a flat indoor floor.
+- The vehicle can stay approximately straight using heading hold.
+- The vehicle stops before obstacles under a configurable policy.
+- The system performs a safe stop on stale LiDAR data or control-link timeout.
 
-### 2.1 MVP1 (primary): LiDAR-only closed loop
+## 3. Product Direction
 
-#### 2.1.1 Functional objective
+- MVP1: LiDAR-first closed loop on the STM32 path.
+- MVP2: RGB-to-mono-depth prototype on iPhone.
+- MVP3: sparse LiDAR + RGB depth completion.
 
-- Drive straight, track target speed, and stop for obstacle.
+## 4. Naming
 
-#### 2.1.2 Scope
+- Use `STM32 control board` and `STM32 direct BLE control` for the primary path.
+- Use `Raspberry Pi WiFi bridge` for the legacy bridge.
+- Use `legacy Pi + Arduino path` when the historical serial bridge is the point of the note.
+- Reserve `MCP` for code namespaces, BLE device names, and historical log entries.
 
-- LiDAR raw point-cloud pipeline (from ARKit `sceneDepth` back-projection).
-- 6D Pose estimation (ARKit World Tracking).
-- Velocity estimation (ESC telemetry via Bluetooth on Raspberry Pi).
-- Speed planner and control.
-- Planner-triggered stop on blocked future path.
-- iPhone to Raspberry Pi command path.
-- Configurable obstacle-stop policy.
+## 5. Invariants
 
-### 2.2 MVP2 (parallel): RGB to mono-depth prototype
+- Sensor, command, and telemetry timestamps are monotonic.
+- Safety overrides performance.
+- Core math stays deterministic and testable.
+- Transport, protocol, and UI stay separated.
+- Coordinate transforms are explicit and validated.
+- MVP scope stays narrow until the current milestone is closed.
 
-#### 2.2.1 Objective
+## 6. Current Interfaces
 
-- Build camera-to-depth inference path on iPhone Neural Engine.
-
-### 2.3 MVP3 (future): sparse LiDAR + RGB depth completion
-
-#### 2.3.1 Objective
-
-- Fuse sparse LiDAR and RGB depth priors.
-- Candidate research direction includes MetricAnything-style depth completion.
-
-## 3. MVP1 System Architecture
-
-### 3.1 Perception component
-
-#### 3.1.1 LiDAR point-cloud processing
-
-- Capture `sceneDepth` depth/confidence maps and back-project to 3D point cloud.
-- Maintain orientation-correct camera/world transforms for stable geometry using ARKit pose.
-- Provide obstacle points to the planner.
-- Keep RGB + point-cloud debug visualization for perception validation.
-
-### 3.2 Estimation component
-
-#### 3.2.1 MVP1 Pose and Velocity
-
-- **Pose**: 6D Pose (position + orientation) sourced from ARKit `worldTracking`. This provides stable localization relative to the start point.
-- **World Map Persistence**: ARKit `ARWorldMap` save/load logic provides drift-corrected relocalization for recurring runs.
-- **Velocity**: Real-time speed sourced from the Electronic Speed Controller (ESC) via Bluetooth connection on the Raspberry Pi. This telemetry is forwarded to the iPhone Brain.
-
-### 3.3 Planner and control component
-
-#### 3.3.1 Speed planning and control baseline
-
-- Speed planner: reach target speed, then keep it.
-- Planner checks whether obstacle points block the future path from the speed planner.
-- Planner emits stop signal when the future path is blocked.
-- Controller tracks planner speed command using ESC telemetry as feedback.
-- Heading hold using ARKit orientation.
-- Initial command loop baseline: `10 Hz` (subject to testing).
-- Initial speed envelope: `0.1` to `2.0` m/s (configurable).
-
-### 3.4 Safety component
-
-#### 3.4.1 Safety policy baseline
-
-- Planner stop threshold is configurable.
-- Planner stop signal has higher priority than normal speed command.
-- `estop` always overrides normal drive commands.
-
-### 3.5 Actuation and transport component
-
-#### 3.5.1 MCP interface strategy
-
-- Command protocol: UDP-based, bi-directional heartbeats (1.0 Hz) and asynchronous control commands.
-- Transport: Wi-Fi (UDP) is the primary transport for initial testing; BLE remains a prototype candidate.
-- Raspberry Pi 4B: Acts as the high-level bridge ("MCP High-Level"), running a modular event-driven C++ application (Asio) with a TUI dashboard (FTXUI).
-- Architectural Integrity: Pure logic (protocol/status) decoupled from transport (UDP/Serial) and UI.
-- ESC Telemetry: iPhone maintains a direct Bluetooth LE connection to the ESC to pull real-time RPM/speed and temperature data.
-- Arduino: Handles low-level PWM/servo control ("MCP Low-Level") via Serial bridge from the Pi.
-- Safety: 1.5-second connection timeout enforced on both iPhone (Brain) and Raspberry Pi (MCP).
-- Diagnostics: Real-time dashboard on Pi and dedicated "MCP Diagnostics" view on iOS.
-- **ARKit Feasibility**: Dedicated iOS view for 6D pose stability, trajectory tracking, and world map management.
-
-#### 3.5.2 Transport and watchdog matrix
-
-| Layer | Path | Current behavior | Status |
-| --- | --- | --- | --- |
-| iPhone <-> Pi | Wi-Fi UDP heartbeats and commands | 1.5-second connection timeout on both sides; refactored for testability | Implemented |
-| Pi <-> Arduino | USB serial forwarding | Auto-reconnect, 3.5-second boot sync, ACK logging; firmware timeout currently logs without neutralization in debug mode | Implemented |
-| STM32 direct BLE control | iPhone <-> STM32 | BlueNRG-MS custom GATT control service with reconnect-safe GAP naming and iOS name matching | Implemented |
-| Drive arbitration | planner / estop | Planner stop should override normal speed; estop remains top priority | Planned |
-
-## 4. Engineering Invariants
-
-### 4.1 Cross-component invariants
-
-#### 4.1.1 Rules
-
-- Every sensor sample and command carries a monotonic timestamp.
-- Safety constraints dominate performance targets.
-- Core algorithms remain physics-based and deterministic, not ad-hoc heuristics.
-- Camera/pixel/world coordinate transforms are explicit and validated.
-- Interfaces are testable, versioned, and bounded.
-- MVP boundaries are strict to avoid scope drift.
+- iPhone -> STM32 BLE: primary drive and telemetry path.
+- iPhone -> Raspberry Pi WiFi -> Arduino serial: compatibility bridge.
+- ESC -> iPhone BLE: direct telemetry feed.
