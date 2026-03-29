@@ -7,7 +7,7 @@ Receives steering and throttle commands over BLE and drives PWM outputs to contr
 
 - **Target MCU**: STM32L475 (Cortex-M4 with FPU)
 - **Board**: B-L475E-IOT01A (Discovery Kit IoT Node)
-- **Current Version**: 0.2.1-ble
+- **Current Version**: 0.2.1
 - **Framework**: STM32Cube HAL + BlueNRG-MS BLE middleware
 - **BLE Module**: SPBTLE-RF (BlueNRG-MS) via SPI3
 
@@ -52,7 +52,7 @@ For full details, run `./build.sh --help` or refer to the `.agent/workflows/buil
 
 ## Memory Usage (Debug)
 
-| Region | Used | Available | % |
-|--------|------|-----------|---|
-| FLASH  | 36KB | 1MB       | 3.5% |
-| RAM    | 4.4KB| 96KB      | 4.5% |
+| Region | Used  | Available | %    |
+|--------|-------|-----------|------|
+| FLASH  | 36KB  | 1MB       | 3.5% |
+| RAM    | 4.4KB | 96KB      | 4.5% |

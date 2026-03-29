@@ -6,7 +6,7 @@ This file tracks completed milestones and the artifacts that prove them.
 
 - iOS tags use `ios-v*`.
 - The legacy Raspberry Pi bridge uses the historical alias `mcp-v0.1.0` and the current hyphenated tag `raspberry-pi-mcp-v0.1.0`.
-- STM32 firmware tags use `stm32-mcp-v*`; `v0.1.0` marks the initial firmware scaffold, while BLE control continues on the `v0.2.0` and `v0.2.1-ble` line.
+- STM32 firmware tags use `stm32-mcp-v*`; `v0.1.0` marks the initial firmware scaffold, while BLE control continues on the `v0.2.0` and `v0.2.1` line.
 
 ## Milestones
 
@@ -20,7 +20,7 @@ This file tracks completed milestones and the artifacts that prove them.
 | 2026-03-28 | `ios-v0.5.1`                                            | STM32 reconnect stability                             | Reconnect-safe BLE scanning matched the cached and advertising names on the STM32 side.                                      | `metalbot-ios/CHANGELOG.md` `0.5.1`; `metalbot-ios/Sources/Views/HomeView.swift`; `metalbot-ios/Sources/Views/MCPTestView.swift` |
 | 2026-03-27 | `stm32-mcp-v0.1.0`                                      | Initial STM32 firmware scaffold                       | The first STM32 target, build pipeline, and command-line flashing workflow were established.                                 | `firmware/stm32-mcp/CHANGELOG.md` `0.1.0`; `firmware/stm32-mcp/README.md`                                                        |
 | 2026-03-27 | `stm32-mcp-v0.2.0`                                      | BLE control service                                   | BlueNRG BLE control service, PWM actuation, and timeout behavior were added to the STM32 path.                               | `firmware/stm32-mcp/CHANGELOG.md` `0.2.0`; `firmware/stm32-mcp/README.md`                                                        |
-| 2026-03-28 | `stm32-mcp-v0.2.1-ble`                                  | Reconnect-safe BLE naming                             | GAP naming and advertising were aligned so the iPhone reconnect flow stays stable.                                           | `firmware/stm32-mcp/CHANGELOG.md` `0.2.1-ble`; `metalbot-ios/README.md`                                                          |
+| 2026-03-28 | `stm32-mcp-v0.2.1`                                      | Reconnect-safe BLE naming                             | GAP naming and advertising were aligned so the iPhone reconnect flow stays stable.                                           | `firmware/stm32-mcp/CHANGELOG.md` `0.2.1`; `metalbot-ios/README.md`                                                              |
 
 ## Branding
 

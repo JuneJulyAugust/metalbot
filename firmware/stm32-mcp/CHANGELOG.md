@@ -3,7 +3,7 @@
 All notable changes to this project will be documented in this file.
 <!-- markdownlint-disable MD024 -->
 
-## [0.2.1-ble] - 2026-03-28
+## [0.2.1] - 2026-03-28
 
 ### Fixed
 
