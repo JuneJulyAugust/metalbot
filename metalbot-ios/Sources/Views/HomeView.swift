@@ -28,7 +28,8 @@ struct HomeView: View {
                         Text("metalbot")
                             .font(.system(size: 40, weight: .bold, design: .rounded))
                         
-                        Text("v0.7.0")
+                        let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
+                        Text("v\(appVersion)")
                             .font(.caption.monospaced())
                             .foregroundColor(.secondary)
                             .padding(.horizontal, 12)

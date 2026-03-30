@@ -86,6 +86,7 @@ EOF
 
 cmd_generate() {
     echo "==> Generating Xcode project..."
+    export APP_VERSION=$(cat VERSION)
     xcodegen generate
     echo "==> Done: $PROJECT_NAME.xcodeproj"
 }
