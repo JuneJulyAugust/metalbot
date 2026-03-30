@@ -51,6 +51,15 @@ If a future build fails with `expired provisioning profile`, `invalid code signa
 
 The project is already configured for automatic signing in `project.yml`, so the normal fix is to refresh the local Xcode signing state and rebuild. Apple development profiles are not permanent.
 
+## Bumping the App Version
+
+The app version is defined in a single source of truth: `metalbot-ios/VERSION`.
+
+To bump the version:
+1. Edit the `metalbot-ios/VERSION` file.
+2. Run `./build.sh generate` to inject the new version into the Xcode project (`project.yml` sets `MARKETING_VERSION: ${APP_VERSION}`).
+3. The UI automatically reads the current version from the `Bundle` at runtime.
+
 ## Notes
 
 - `project.yml` is the source of truth for signing and build settings.
