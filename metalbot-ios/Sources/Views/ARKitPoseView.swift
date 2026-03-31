@@ -115,7 +115,11 @@ struct ARKitPoseView: View {
                 Text(String(format: "Yaw: %+.1f°", yawDeg))
                     .font(.system(.subheadline, design: .monospaced))
                     .foregroundColor(.blue)
-                
+
+                Text(String(format: "Speed: %.2f m/s", viewModel.arkitSpeedMps))
+                    .font(.system(.subheadline, design: .monospaced))
+                    .foregroundColor(.green)
+
             } else {
                 Text("Waiting...")
                     .font(.system(.subheadline, design: .monospaced))

@@ -58,6 +58,9 @@ final class ARKitPoseViewModel: NSObject, ObservableObject, ARSessionDelegate {
     /// Center-pixel LiDAR depth in meters (nil if depth unavailable).
     @Published var forwardDepth: Float?
 
+    /// Ground-plane speed estimated from ARKit pose differentiation (m/s).
+    @Published var arkitSpeedMps: Double = 0
+
     /// Whether the session was interrupted (app backgrounded, camera lost, etc.).
     @Published var isInterrupted: Bool = false
 
@@ -92,6 +95,9 @@ final class ARKitPoseViewModel: NSObject, ObservableObject, ARSessionDelegate {
     /// Accessed only on frameQueue — no lock needed.
     private var frameTimestamps: [TimeInterval] = []
     private let freqWindowSize = 30  // ~0.5 s at 60 Hz
+
+    /// Velocity estimator — differentiates consecutive poses.
+    private var velocityEstimator = ARKitVelocityEstimator()
 
     /// Dedicated high-priority queue for ARSession delegate callbacks.
     private let frameQueue = DispatchQueue(label: "com.metalbot.arkit.pose", qos: .userInitiated)
@@ -152,6 +158,8 @@ final class ARKitPoseViewModel: NSObject, ObservableObject, ARSessionDelegate {
             self.isUsingSceneDepth = false
             self.isInterrupted = false
             self.isRelocalizing = false
+            self.velocityEstimator.reset()
+            self.arkitSpeedMps = 0
         }
     }
 
@@ -471,6 +479,9 @@ final class ARKitPoseViewModel: NSObject, ObservableObject, ARSessionDelegate {
             self.trackingState = state
             self.isUsingSceneDepth = hasDepth
             self.forwardDepth = centerDepth
+            if let speed = self.velocityEstimator.update(x: robotX, z: robotZ, timestamp: timestamp) {
+                self.arkitSpeedMps = speed
+            }
 
             switch state {
             case .notAvailable:
