@@ -5,16 +5,15 @@ import SwiftUI
 /// Landscape: RGB left, point cloud right.
 struct DepthCaptureView: View {
     @StateObject private var viewModel = CaptureViewModel()
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
 
             switch viewModel.state {
-            case .idle:
-                startPrompt
-            case .requesting:
-                ProgressView("Starting capture...")
+            case .idle, .requesting:
+                ProgressView("Starting capture…")
                     .foregroundStyle(.white)
             case .running:
                 captureDisplay
@@ -24,6 +23,8 @@ struct DepthCaptureView: View {
         }
         .preferredColorScheme(.dark)
         .statusBarHidden(viewModel.state == .running)
+        .onAppear { viewModel.startCapture() }
+        .onDisappear { viewModel.stopCapture() }
     }
 
     private var captureDisplay: some View {
@@ -54,7 +55,10 @@ struct DepthCaptureView: View {
                         viewModeIndicator
                             .padding(.leading, 16)
                         Spacer()
-                        Button(action: { viewModel.stopCapture() }) {
+                        Button(action: {
+                            viewModel.stopCapture()
+                            dismiss()
+                        }) {
                             Image(systemName: "stop.circle.fill")
                                 .font(.system(size: 40))
                                 .foregroundStyle(.red)
@@ -107,32 +111,6 @@ struct DepthCaptureView: View {
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
                 .background(.ultraThinMaterial, in: Capsule())
-        }
-    }
-
-    private var startPrompt: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "cube.transparent")
-                .font(.system(size: 64))
-                .foregroundStyle(.cyan)
-            Text("metalbot")
-                .font(.title.bold())
-                .foregroundStyle(.white)
-            Text("LiDAR Point Cloud")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            
-            VStack(spacing: 12) {
-                Button(action: { viewModel.startCapture() }) {
-                    Label("Start Capture", systemImage: "play.fill")
-                        .font(.headline)
-                        .padding(.horizontal, 24)
-                        .padding(.vertical, 12)
-                        .frame(maxWidth: 240)
-                        .background(.cyan, in: Capsule())
-                        .foregroundStyle(.black)
-                }
-            }
         }
     }
 

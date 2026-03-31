@@ -14,6 +14,7 @@ public enum ESCBleStatus: String {
 
 public struct ESCTelemetry {
     public let rpm: Int
+    public let speedMps: Double
     public let escTemperature: Double
     public let motorTemperature: Double
     public let voltage: Double
@@ -23,10 +24,14 @@ public struct ESCTelemetry {
 }
 
 public class ESCBleManager: NSObject, ObservableObject {
+
+    /// Shared singleton — only one connection to the ESC peripheral may exist at a time.
+    public static let shared = ESCBleManager()
+
     @Published public var status: ESCBleStatus = .disconnected
     @Published public var telemetry: ESCTelemetry?
     @Published public var deviceName: String = "Unknown"
-    
+
     private var centralManager: CBCentralManager!
     private var peripheral: CBPeripheral?
     private var writeChar: CBCharacteristic?
@@ -40,7 +45,8 @@ public class ESCBleManager: NSObject, ObservableObject {
     private var pollTimer: Timer?
     private var handshakeTimer: Timer?
     
-    // Frequency calculation
+    // Filtering and Frequency calculation
+    private var rpmFilter = MovingAverageFilter(size: 4)
     private var lastPacketTimes: [Date] = []
     private let frequencyWindowSize = 10
     public var messageCount = 0
@@ -51,9 +57,9 @@ public class ESCBleManager: NSObject, ObservableObject {
     }
     
     public func start() {
-        if centralManager.state == .poweredOn {
-            scan()
-        }
+        guard status == .disconnected else { return }  // already running
+        guard centralManager.state == .poweredOn else { return }
+        scan()
     }
     
     public func stop() {
@@ -130,7 +136,7 @@ extension ESCBleManager: CBCentralManagerDelegate {
     public func centralManagerDidUpdateState(_ central: CBCentralManager) {
         switch central.state {
         case .poweredOn:
-            scan()
+            if status == .disconnected { scan() }
         case .unauthorized:
             status = .unauthorized
         case .poweredOff:
@@ -198,9 +204,15 @@ extension ESCBleManager: CBPeripheralDelegate {
         if let packet = TelemetryPacket(data) {
             messageCount += 1
             let freq = updateFrequency()
+            
+            // Apply filtering and conversion
+            let filteredRpm = rpmFilter.update(Double(packet.rpm))
+            let speedMps = MotorSpeedConverter.rpmToMps(filteredRpm)
+            
             DispatchQueue.main.async {
                 self.telemetry = ESCTelemetry(
-                    rpm: packet.rpm,
+                    rpm: Int(filteredRpm),
+                    speedMps: speedMps,
                     escTemperature: packet.escTemperatureC,
                     motorTemperature: packet.motorTemperatureC,
                     voltage: packet.voltageV,

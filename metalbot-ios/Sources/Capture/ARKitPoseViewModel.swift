@@ -81,9 +81,17 @@ final class ARKitPoseViewModel: NSObject, ObservableObject, ARSessionDelegate {
     /// Whether the map management sheet is presented.
     @Published var showMapManager: Bool = false
 
+    /// Measured rate of valid ARKit pose deliveries. Updated every frame.
+    @Published var poseHz: Double = 0
+
     private let arSession = ARSession()
     private var lastRecordedTime: TimeInterval = 0
-    private let recordInterval: TimeInterval = 0.1 // 10 Hz
+    private let recordInterval: TimeInterval = 0.1 // 10 Hz trajectory history
+
+    /// Rolling window of frame timestamps used to compute poseHz.
+    /// Accessed only on frameQueue — no lock needed.
+    private var frameTimestamps: [TimeInterval] = []
+    private let freqWindowSize = 30  // ~0.5 s at 60 Hz
 
     /// Dedicated high-priority queue for ARSession delegate callbacks.
     private let frameQueue = DispatchQueue(label: "com.metalbot.arkit.pose", qos: .userInitiated)
@@ -446,8 +454,20 @@ final class ARKitPoseViewModel: NSObject, ObservableObject, ARSessionDelegate {
         // Extract center-pixel depth for safety supervisor.
         let centerDepth = Self.extractCenterDepth(from: frame.sceneDepth?.depthMap)
 
+        // Compute rolling-window frequency (on frameQueue — serial, no lock needed).
+        frameTimestamps.append(timestamp)
+        if frameTimestamps.count > freqWindowSize { frameTimestamps.removeFirst() }
+        let hz: Double
+        if frameTimestamps.count >= 2 {
+            let span = frameTimestamps.last! - frameTimestamps.first!
+            hz = span > 0 ? Double(frameTimestamps.count - 1) / span : 0
+        } else {
+            hz = 0
+        }
+
         DispatchQueue.main.async {
             self.currentPose = entry
+            self.poseHz = hz
             self.trackingState = state
             self.isUsingSceneDepth = hasDepth
             self.forwardDepth = centerDepth

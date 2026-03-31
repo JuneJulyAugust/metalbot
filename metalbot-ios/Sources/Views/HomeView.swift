@@ -7,48 +7,69 @@ struct HomeView: View {
                 let isPortrait = geo.size.height > geo.size.width
                 let screenWidth = geo.size.width
                 let screenHeight = geo.size.height
-                
+
                 let width = isPortrait ? screenHeight : screenWidth
                 let height = isPortrait ? screenWidth : screenHeight
-                
+
                 HStack(spacing: 0) {
                     // LEFT: Branding
-                    VStack(spacing: 20) {
+                    VStack(spacing: 16) {
+                        // Logo mark
                         ZStack {
-                            Circle()
-                                .fill(LinearGradient(colors: [.gray.opacity(0.3), .gray.opacity(0.1)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                                .frame(width: 120, height: 120)
-                                .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5)
-                            
-                            Image(systemName: "sensor.tag.radiowaves.forward")
-                                .font(.system(size: 50, weight: .light))
-                                .foregroundColor(.cyan)
+                            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                                .fill(LinearGradient(
+                                    colors: [Color(red: 0.04, green: 0.1, blue: 0.22),
+                                             Color(red: 0.01, green: 0.03, blue: 0.08)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ))
+                                .frame(width: 108, height: 108)
+                                .shadow(color: .cyan.opacity(0.35), radius: 22, x: 0, y: 8)
+                                .shadow(color: .black.opacity(0.5), radius: 6, x: 0, y: 3)
+
+                            Image(systemName: "steeringwheel")
+                                .font(.system(size: 54, weight: .thin))
+                                .foregroundStyle(
+                                    LinearGradient(
+                                        colors: [.cyan, Color(red: 0.2, green: 0.6, blue: 1.0)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
                         }
-                        
-                        Text("metalbot")
-                            .font(.system(size: 40, weight: .bold, design: .rounded))
-                        
-                        let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
+
+                        VStack(spacing: 4) {
+                            Text("metalbot")
+                                .font(.system(size: 36, weight: .bold, design: .rounded))
+                                .foregroundStyle(.primary)
+
+                            Text("autonomous ground robot")
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundStyle(.secondary)
+                                .tracking(0.5)
+                        }
+
+                        let appVersion = Self.appVersion
                         Text("v\(appVersion)")
-                            .font(.caption.monospaced())
-                            .foregroundColor(.secondary)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 4)
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundStyle(.tertiary)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 3)
                             .background(.ultraThinMaterial, in: Capsule())
                     }
                     .frame(width: width * 0.45)
-                    
+
                     // RIGHT: Actions
-                    VStack(spacing: 24) {
+                    VStack(spacing: 20) {
                         NavigationLink(destination: SelfDrivingView()) {
                             actionCard(
                                 title: "Self Driving",
-                                subtitle: "Autonomous loop & Planner",
+                                subtitle: "Autonomous loop & planner",
                                 icon: "steeringwheel",
                                 color: .green
                             )
                         }
-                        
+
                         NavigationLink(destination: DiagnosticsView()) {
                             actionCard(
                                 title: "Diagnostics",
@@ -67,23 +88,36 @@ struct HomeView: View {
                 .position(x: screenWidth / 2, y: screenHeight / 2)
             }
             .ignoresSafeArea()
+            .navigationTitle("metalbot")
             .navigationBarHidden(true)
         }
     }
-    
+
+    /// Read version from the bundled VERSION file (single source of truth),
+    /// with Info.plist fallback.
+    private static var appVersion: String {
+        if let url = Bundle.main.url(forResource: "VERSION", withExtension: nil),
+           let text = try? String(contentsOf: url).trimmingCharacters(in: .whitespacesAndNewlines),
+           !text.isEmpty {
+            return text
+        }
+        let plist = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
+        return plist.isEmpty ? "Unknown" : plist
+    }
+
     private func actionCard(title: String, subtitle: String, icon: String, color: Color) -> some View {
-        HStack(spacing: 20) {
+        HStack(spacing: 16) {
             Image(systemName: icon)
-                .font(.system(size: 32))
+                .font(.system(size: 28, weight: .semibold))
                 .foregroundColor(.white)
-                .frame(width: 70, height: 70)
+                .frame(width: 60, height: 60)
                 .background(color)
-                .cornerRadius(18)
+                .cornerRadius(16)
                 .shadow(color: color.opacity(0.4), radius: 8, x: 0, y: 4)
-            
-            VStack(alignment: .leading, spacing: 6) {
+
+            VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(.title3.bold())
+                    .font(.headline)
                     .foregroundColor(.primary)
                 Text(subtitle)
                     .font(.subheadline)
@@ -91,51 +125,81 @@ struct HomeView: View {
             }
             Spacer()
             Image(systemName: "chevron.right")
-                .font(.title3.bold())
+                .font(.subheadline.bold())
                 .foregroundColor(Color(.tertiaryLabel))
         }
         .padding(16)
         .background(Color(.secondarySystemGroupedBackground))
-        .cornerRadius(24)
-        .shadow(color: Color.black.opacity(0.08), radius: 15, x: 0, y: 8)
+        .cornerRadius(20)
+        .shadow(color: Color.black.opacity(0.07), radius: 12, x: 0, y: 6)
     }
 }
+
+// MARK: - DiagnosticsView
 
 struct DiagnosticsView: View {
     var body: some View {
         List {
-            Section(header: Text("Perception")) {
-                NavigationLink(destination: DepthCaptureView()) {
-                    Label("LiDAR Capture", systemImage: "cube.transparent")
-                        .font(.headline)
-                        .padding(.vertical, 4)
-                }
+            Section("Perception") {
+                diagRow(
+                    title: "LiDAR Capture",
+                    subtitle: "3D point cloud visualization",
+                    icon: "cube.transparent",
+                    color: .cyan,
+                    destination: DepthCaptureView()
+                )
             }
-            
-            Section(header: Text("Estimation")) {
-                NavigationLink(destination: ARKitPoseView()) {
-                    Label("ARKit 6D Pose", systemImage: "move.3d")
-                        .font(.headline)
-                        .padding(.vertical, 4)
-                }
+
+            Section("Estimation") {
+                diagRow(
+                    title: "ARKit 6D Pose",
+                    subtitle: "Real-time pose & map tracking",
+                    icon: "move.3d",
+                    color: .purple,
+                    destination: ARKitPoseView()
+                )
             }
-            
-            Section(header: Text("CONTROL")) {
-                NavigationLink(destination: MCPTestView()) {
-                    Label("Raspberry Pi WiFi", systemImage: "cpu")
-                        .font(.headline)
-                        .padding(.vertical, 4)
-                }
-            }
-            
-            Section(header: Text("Control")) {
-                NavigationLink(destination: STM32ControlView()) {
-                    Label("STM32 Direct BLE", systemImage: "bolt.horizontal.fill")
-                        .font(.headline)
-                        .padding(.vertical, 4)
-                }
+
+            Section("Control") {
+                diagRow(
+                    title: "STM32 Direct BLE",
+                    subtitle: "PWM control via Bluetooth",
+                    icon: "bolt.horizontal.fill",
+                    color: .blue,
+                    destination: STM32ControlView()
+                )
+                diagRow(
+                    title: "Raspberry Pi WiFi",
+                    subtitle: "MCP bridge over UDP",
+                    icon: "cpu",
+                    color: .orange,
+                    destination: RaspberryPiControlView()
+                )
             }
         }
         .navigationTitle("Diagnostics")
+    }
+
+    private func diagRow<D: View>(title: String, subtitle: String, icon: String, color: Color, destination: D) -> some View {
+        NavigationLink(destination: destination) {
+            HStack(spacing: 14) {
+                Image(systemName: icon)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(width: 40, height: 40)
+                    .background(color)
+                    .cornerRadius(9)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.body.bold())
+                        .foregroundColor(.primary)
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .padding(.vertical, 6)
+        }
     }
 }

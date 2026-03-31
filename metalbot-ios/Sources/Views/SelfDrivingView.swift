@@ -15,9 +15,9 @@ struct SelfDrivingView: View {
     @Environment(\.presentationMode) var presentationMode
 
     // View state for map interaction
-    @State private var scale: CGFloat = 100.0
+    @State private var scale: CGFloat = 40.0
     @State private var offset: CGSize = .zero
-    @State private var lastScale: CGFloat = 100.0
+    @State private var lastScale: CGFloat = 40.0
     @State private var lastOffset: CGSize = .zero
 
     // Repeating alarm timer — active while safety override is engaged.
@@ -101,7 +101,7 @@ struct SelfDrivingView: View {
                 HStack(spacing: 4) {
                     Image(systemName: "chevron.left")
                         .font(.body.bold())
-                    Text("Back")
+                    Text("Home")
                         .font(.subheadline.bold())
                 }
                 .foregroundColor(.white)
@@ -114,16 +114,22 @@ struct SelfDrivingView: View {
             
             // Subsystem Status
             HStack(spacing: 16) {
-                // ARKit Status
+                // ARKit Status + Hz
                 HStack(spacing: 6) {
                     Circle()
                         .fill(arkitColor)
                         .frame(width: 8, height: 8)
-                    Text("ARKit: \(viewModel.poseModel.trackingReason)")
+                    Text("ARKit")
                         .font(.caption.bold())
                         .foregroundColor(.primary)
+                    Text(String(format: "%.0f Hz", viewModel.poseModel.poseHz))
+                        .font(.caption.monospacedDigit().bold())
+                        .foregroundColor(.cyan)
+                    Text(viewModel.poseModel.trackingReason)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                     if let pose = viewModel.poseModel.currentPose {
-                        Text(String(format: "Conf: %.0f%%", pose.confidence * 100))
+                        Text(String(format: "C:%.0f%%", pose.confidence * 100))
                             .font(.caption.monospacedDigit())
                             .foregroundColor(.secondary)
                     }
@@ -191,7 +197,8 @@ struct SelfDrivingView: View {
                 Text("TELEMETRY")
                     .font(.caption2.bold())
                     .foregroundColor(.secondary)
-                MetricRow(label: "Speed", value: "\(viewModel.escManager.telemetry?.rpm ?? 0) RPM")
+                MetricRow(label: "Speed", value: String(format: "%.2f m/s", viewModel.escManager.telemetry?.speedMps ?? 0.0))
+                MetricRow(label: "RPM", value: "\(viewModel.escManager.telemetry?.rpm ?? 0)")
                 MetricRow(label: "Voltage", value: String(format: "%.1f V", viewModel.escManager.telemetry?.voltage ?? 0.0))
                 MetricRow(label: "Temp", value: String(format: "%.0f°C", viewModel.escManager.telemetry?.escTemperature ?? 0.0))
             }

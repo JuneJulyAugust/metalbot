@@ -8,8 +8,8 @@ final class SelfDrivingViewModel: ObservableObject {
     // MARK: - Subsystems
     
     @Published var poseModel = ARKitPoseViewModel()
-    @Published var escManager = ESCBleManager()
-    @Published var stm32Manager = STM32BleManager()
+    @Published var escManager = ESCBleManager.shared
+    @Published var stm32Manager = STM32BleManager.shared
     
     // MARK: - Planner
 
@@ -39,8 +39,8 @@ final class SelfDrivingViewModel: ObservableObject {
     @Published var steering: Float = 0.0
     @Published var throttle: Float = 0.0
 
-    // Control Loop
-    private var controlTimer: AnyCancellable?
+    // Control loop subscription — driven by ARKit pose updates, not a fixed timer.
+    private var controlLoopSub: AnyCancellable?
     private var cancellables = Set<AnyCancellable>()
     
     init() {
@@ -62,14 +62,16 @@ final class SelfDrivingViewModel: ObservableObject {
         guard !isStarted else { return }
         
         poseModel.start()
-        escManager.start()
-        stm32Manager.start()
+        escManager.start()    // idempotent — no-op if already connected
+        stm32Manager.start() // idempotent — no-op if already connected
         
         isStarted = true
-        
-        // Start Control Loop @ 10Hz
-        controlTimer = Timer.publish(every: 0.1, on: .main, in: .common)
-            .autoconnect()
+
+        // Drive the control loop directly from ARKit pose updates.
+        // Runs at the camera frame rate (~60 Hz) — no artificial throttle.
+        controlLoopSub = poseModel.$currentPose
+            .compactMap { $0 }
+            .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.runControlLoop()
             }
@@ -79,12 +81,11 @@ final class SelfDrivingViewModel: ObservableObject {
         isStarted = false
         isAutonomous = false
         
-        controlTimer?.cancel()
-        controlTimer = nil
+        controlLoopSub?.cancel()
+        controlLoopSub = nil
         
         poseModel.stop()
-        escManager.stop()
-        stm32Manager.stop()
+        // Shared singletons (ESC + STM32) are not stopped — they persist across views
         
         resetActuators()
     }

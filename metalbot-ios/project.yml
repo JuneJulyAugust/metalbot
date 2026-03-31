@@ -31,6 +31,8 @@ targets:
         excludes:
           - "**/*.md"
       - path: Resources/Assets.xcassets
+      - path: VERSION
+        buildPhase: resources
     settings:
       base:
         INFOPLIST_FILE: Resources/Info.plist

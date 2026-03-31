@@ -1,0 +1,7 @@
+motor_speed_rpm,wheel_speed_rpm, diameter_millimeter
+765,  23.3, 88
+1000, 30.5, 88
+1118, 34, 88
+2100, 64, 88
+2930, 89, 88
+4570, 140, 88

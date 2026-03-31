@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.1] - 2026-03-30
+
+### Added
+- **Motor Calibration**: Integrated physical wheel calibration logic ($88\text{mm}$ diameter) to convert raw motor RPM to vehicle speed in $\text{m/s}$.
+- **Robust Filtering**: Implemented a window-based `MovingAverageFilter` to smooth noisy motor RPM data with minimal latency.
+- **Speed Telemetry**: Added $\text{m/s}$ speed display to both `SelfDrivingView` and `STM32ControlView`.
+
+### Changed
+- Reorganized project resources by moving `motor_wheel_calibration.csv` to the `Resources/` directory.
+- Updated `ESCBleManager` to use the new filtering and conversion pipeline for all telemetry updates.
+
 ## [0.7.0] - 2026-03-29
 
 ### Added

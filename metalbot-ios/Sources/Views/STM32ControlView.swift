@@ -1,84 +1,101 @@
 import SwiftUI
 
+/// Discrete values for steering/throttle: -1.0, -0.9, ..., 0.0, ..., 0.9, 1.0
+private let discreteSteps: [Float] = stride(from: -1.0, through: 1.0, by: 0.1)
+    .map { Float((round($0 * 10) / 10)) }
+
 struct STM32ControlView: View {
     @StateObject var viewModel = STM32ControlViewModel()
-    @Environment(\.dismiss) var dismiss
 
     var body: some View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 24) {
 
-                    // --- CONNECTION STATUS ---
+                    // --- ESC TELEMETRY CARD ---
                     GroupBox(label:
-                        Label("BLE CONNECTION", systemImage: "antenna.radiowaves.left.and.right")
+                        Label("ESC TELEMETRY (Direct BLE)", systemImage: "bolt.horizontal.fill")
                             .font(.caption.bold())
                             .foregroundColor(.secondary)
                     ) {
-                        VStack(alignment: .leading, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 16) {
                             HStack {
                                 Circle()
-                                    .fill(statusColor)
-                                    .frame(width: 10, height: 10)
-                                Text(viewModel.status.rawValue)
+                                    .fill(viewModel.escStatus == .connected ? Color.green : Color.orange)
+                                    .frame(width: 8, height: 8)
+
+                                Text(viewModel.escStatus.rawValue)
                                     .font(.subheadline.bold())
-                                    .foregroundColor(statusColor)
+                                    .foregroundColor(viewModel.escStatus == .connected ? .green : .orange)
+
+                                if viewModel.escStatus == .connected {
+                                    Text("(\(viewModel.escDeviceName))")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+
                                 Spacer()
-                                if viewModel.status != .connected {
-                                    Button(action: { viewModel.reconnect() }) {
-                                        Image(systemName: "arrow.clockwise.circle.fill")
-                                            .font(.title3)
-                                            .foregroundColor(.blue)
-                                    }
+
+                                if let telemetry = viewModel.escTelemetry {
+                                    Text("\(String(format: "%.1f", telemetry.updateFrequency)) Hz")
+                                        .font(.caption.monospacedDigit().bold())
+                                        .padding(.horizontal, 6)
+                                        .padding(.vertical, 2)
+                                        .background(Color.blue.opacity(0.1))
+                                        .foregroundColor(.blue)
+                                        .cornerRadius(4)
                                 }
                             }
 
-                            if viewModel.status == .connected {
-                                HStack(spacing: 24) {
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text("Device").font(.caption2).foregroundStyle(.secondary)
-                                        Text(viewModel.deviceName)
-                                            .font(.caption.bold().monospaced())
-                                    }
-                                    Spacer()
-                                    VStack(alignment: .trailing, spacing: 4) {
-                                        Text("RSSI").font(.caption2).foregroundStyle(.secondary)
-                                        Text("\(viewModel.rssi) dBm")
-                                            .font(.caption.bold().monospacedDigit())
-                                    }
-                                    VStack(alignment: .trailing, spacing: 4) {
-                                        Text("Sent").font(.caption2).foregroundStyle(.secondary)
-                                        Text("\(viewModel.commandsSent)")
-                                            .font(.caption.bold().monospacedDigit())
-                                    }
+                            Divider()
+
+                            HStack(alignment: .top) {
+                                VStack(alignment: .leading, spacing: 12) {
+                                    MetricRow(label: "Motor Speed", value: String(format: "%.2f m/s", viewModel.escTelemetry?.speedMps ?? 0.0))
+                                    MetricRow(label: "Motor RPM", value: "\(viewModel.escTelemetry?.rpm ?? 0)")
+                                    MetricRow(label: "Voltage", value: String(format: "%.2f V", viewModel.escTelemetry?.voltage ?? 0.0))
                                 }
+                                Spacer()
+                                Divider().frame(height: 60)
+                                Spacer()
+                                VStack(alignment: .leading, spacing: 12) {
+                                    MetricRow(label: "ESC Temp", value: String(format: "%.1f °C", viewModel.escTelemetry?.escTemperature ?? 0.0))
+                                    MetricRow(label: "Motor Temp", value: String(format: "%.1f °C", viewModel.escTelemetry?.motorTemperature ?? 0.0))
+                                }
+                            }
+
+                            if let telemetry = viewModel.escTelemetry {
+                                Text("Last update: \(telemetry.timestamp.formatted(date: .omitted, time: .complete)) • Messages: \(telemetry.messageCount)")
+                                    .font(.system(size: 8, design: .monospaced))
+                                    .foregroundStyle(.secondary)
+                                    .padding(.top, 4)
                             }
                         }
                         .padding(.vertical, 4)
                     }
                     .groupBoxStyle(ModernGroupBoxStyle())
 
-                    // --- CONTROL SLIDERS ---
+                    // --- DIRECT CONTROL (Discrete Steps) ---
                     GroupBox(label:
                         Label("DIRECT CONTROL", systemImage: "gamecontroller.fill")
                             .font(.caption.bold())
                             .foregroundColor(.secondary)
                     ) {
                         VStack(spacing: 24) {
-                            ControlSlider(
+                            DiscreteControlPicker(
                                 label: "Steering",
                                 icon: "steeringwheel",
-                                value: $viewModel.steering,
+                                value: viewModel.steering,
                                 color: .cyan,
-                                onUpdate: { viewModel.updateSteering($0) }
+                                onSelect: { viewModel.updateSteering($0) }
                             )
 
-                            ControlSlider(
+                            DiscreteControlPicker(
                                 label: "Throttle",
                                 icon: "engine.combustion.fill",
-                                value: $viewModel.throttle,
+                                value: viewModel.throttle,
                                 color: .mint,
-                                onUpdate: { viewModel.updateThrottle($0) }
+                                onSelect: { viewModel.updateThrottle($0) }
                             )
 
                             // PWM readout
@@ -141,12 +158,26 @@ struct STM32ControlView: View {
                 .padding()
             }
             .background(Color(.systemGroupedBackground))
-            .navigationTitle("STM32 Control")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Done") { dismiss() }
-                        .bold()
+                ToolbarItem(placement: .principal) {
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(statusColor)
+                            .frame(width: 8, height: 8)
+                        Text("STM32 Control")
+                            .font(.headline)
+                        Text("· \(viewModel.status.rawValue)")
+                            .font(.caption)
+                            .foregroundColor(statusColor)
+                    }
+                }
+                if viewModel.status != .connected {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button(action: { viewModel.reconnect() }) {
+                            Image(systemName: "arrow.clockwise")
+                        }
+                    }
                 }
             }
         }
@@ -170,5 +201,48 @@ struct STM32ControlView: View {
     /// Convert normalized throttle [-1, +1] to PWM µs for display
     private var throttlePWM: Int {
         Int(1500.0 + viewModel.throttle * 500.0)
+    }
+}
+
+// MARK: - Discrete Control Picker
+
+/// A picker that lets the user select from discrete values: -1.0, -0.9, ..., 0.0, ..., 0.9, 1.0
+private struct DiscreteControlPicker: View {
+    let label: String
+    let icon: String
+    let value: Float
+    let color: Color
+    let onSelect: (Float) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Image(systemName: icon)
+                    .foregroundColor(color)
+                Text(label)
+                    .font(.subheadline.bold())
+                Spacer()
+                Text(String(format: "%+.1f", value))
+                    .font(.system(.title3, design: .monospaced).bold())
+                    .foregroundColor(color)
+            }
+
+            Picker(label, selection: Binding(
+                get: { roundedValue },
+                set: { onSelect($0) }
+            )) {
+                ForEach(discreteSteps, id: \.self) { step in
+                    Text(String(format: "%+.1f", step))
+                        .tag(step)
+                }
+            }
+            .pickerStyle(.wheel)
+            .frame(height: 100)
+        }
+    }
+
+    private var roundedValue: Float {
+        let rounded = (value * 10).rounded() / 10
+        return max(-1.0, min(1.0, rounded))
     }
 }

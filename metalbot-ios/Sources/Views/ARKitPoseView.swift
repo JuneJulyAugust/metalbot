@@ -6,9 +6,9 @@ struct ARKitPoseView: View {
     @Environment(\.presentationMode) var presentationMode
     
     // View state for interaction
-    @State private var scale: CGFloat = 100.0 // pixels per meter
+    @State private var scale: CGFloat = 40.0 // pixels per meter (~5m visible per side)
     @State private var offset: CGSize = .zero
-    @State private var lastScale: CGFloat = 100.0
+    @State private var lastScale: CGFloat = 40.0
     @State private var lastOffset: CGSize = .zero
     @State private var canvasSize: CGSize = .zero
     
@@ -93,9 +93,9 @@ struct ARKitPoseView: View {
             }) {
                 HStack(spacing: 4) {
                     Image(systemName: "chevron.left")
-                        .font(.body.bold()) // Smaller
-                    Text("Back")
-                        .font(.subheadline) // Smaller
+                        .font(.body.bold())
+                    Text("Diagnostics")
+                        .font(.subheadline)
                 }
                 .foregroundColor(.blue)
             }
@@ -122,7 +122,7 @@ struct ARKitPoseView: View {
                     .foregroundColor(.secondary)
             }
             
-            // Tracking State Display
+            // Tracking State + Hz
             HStack(spacing: 4) {
                 Circle()
                     .fill(trackingStateColor)
@@ -130,6 +130,14 @@ struct ARKitPoseView: View {
                 Text(viewModel.trackingReason)
                     .font(.caption.bold())
                     .foregroundColor(trackingStateColor)
+            }
+            HStack(spacing: 4) {
+                Image(systemName: "waveform")
+                    .font(.caption2)
+                    .foregroundColor(.cyan)
+                Text(String(format: "%.0f Hz", viewModel.poseHz))
+                    .font(.system(.caption, design: .monospaced).bold())
+                    .foregroundColor(.cyan)
             }
 
             // Interruption / Relocalization warning
@@ -319,10 +327,10 @@ struct ARKitPoseView: View {
         let allPoses = viewModel.poses + (viewModel.currentPose.map { [$0] } ?? [])
         guard !allPoses.isEmpty else {
             withAnimation(.easeInOut(duration: 0.3)) {
-                self.scale = 100.0
+                self.scale = 40.0
                 self.offset = .zero
             }
-            self.lastScale = 100.0
+            self.lastScale = 40.0
             self.lastOffset = .zero
             return
         }
@@ -346,9 +354,9 @@ struct ARKitPoseView: View {
         let availableWidth = size.width - padding * 2
         let availableHeight = size.height - padding * 2
         
-        // Scale to fit ranges. If range is tiny, default to 150 pixels/m.
-        let scaleX = rangeZ > 0.05 ? availableWidth / rangeZ : 150.0
-        let scaleY = rangeX > 0.05 ? availableHeight / rangeX : 150.0
+        // Scale to fit ranges. If range is tiny, default to 40 pixels/m (~5m visible).
+        let scaleX = rangeZ > 0.05 ? availableWidth / rangeZ : 40.0
+        let scaleY = rangeX > 0.05 ? availableHeight / rangeX : 40.0
         
         let targetScale = min(scaleX, scaleY)
         let finalScale = max(20, min(targetScale, 400)) // Clamp scale limits

@@ -2,7 +2,7 @@ import Foundation
 import UIKit
 import Combine
 
-class MCPTestViewModel: ObservableObject {
+class RaspberryPiControlViewModel: ObservableObject {
     @Published var connectionStatus: String = "Disconnected"
     @Published var hbSentCount: Int = 0
     @Published var hbReceivedCount: Int = 0
@@ -20,7 +20,7 @@ class MCPTestViewModel: ObservableObject {
     @Published var escDeviceName: String = "Unknown"
 
     private let connection: MCPConnection
-    private let escManager = ESCBleManager()
+    private let escManager = ESCBleManager.shared
     private var cancellables = Set<AnyCancellable>()
 
     private let timeFormatter: DateFormatter = {
@@ -36,13 +36,13 @@ class MCPTestViewModel: ObservableObject {
         setupCallbacks()
         setupEscSubscriptions()
         conn.connect()
-        escManager.start()
+        escManager.start()  // idempotent — no-op if already connected
         startHeartbeat()
     }
 
     deinit {
         connection.disconnect()
-        escManager.stop()
+        // ESCBleManager.shared is not stopped — it outlives this viewmodel
     }
 
     // MARK: - Setup

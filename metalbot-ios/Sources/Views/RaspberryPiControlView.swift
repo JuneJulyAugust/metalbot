@@ -1,7 +1,7 @@
 import SwiftUI
 
-struct MCPTestView: View {
-    @StateObject var viewModel = MCPTestViewModel()
+struct RaspberryPiControlView: View {
+    @StateObject var viewModel = RaspberryPiControlViewModel()
     @Environment(\.dismiss) var dismiss
 
     var body: some View {

@@ -16,6 +16,9 @@ public enum STM32BleStatus: String {
 /// Sends steering + throttle commands as packed int16_t pairs (4 bytes).
 public class STM32BleManager: NSObject, ObservableObject {
 
+    /// Shared singleton — only one connection to METALBOT-MCP may exist at a time.
+    public static let shared = STM32BleManager()
+
     // MARK: - Published State
 
     @Published public var status: STM32BleStatus = .disconnected
@@ -51,6 +54,7 @@ public class STM32BleManager: NSObject, ObservableObject {
     // MARK: - Public API
 
     public func start() {
+        guard status == .disconnected else { return }  // already running
         guard centralManager.state == .poweredOn else { return }
         scan()
     }
@@ -109,7 +113,7 @@ extension STM32BleManager: CBCentralManagerDelegate {
     public func centralManagerDidUpdateState(_ central: CBCentralManager) {
         switch central.state {
         case .poweredOn:
-            scan()
+            if status == .disconnected { scan() }
         case .poweredOff:
             status = .poweredOff
         case .unauthorized:
