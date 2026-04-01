@@ -18,13 +18,13 @@ final class SelfDrivingViewModel: ObservableObject {
     /// Active waypoints for map overlay (empty for constant speed mode).
     @Published var waypoints: [Waypoint] = []
 
-    /// Target speed for constant speed planner (m/s). Adjustable from UI.
-    @Published var targetSpeedMps: Float = 0.2
+    /// Target throttle for constant throttle planner. Adjustable from UI.
+    @Published var targetThrottle: Float = 0.4
 
-    // MARK: - Speed Limits
+    // MARK: - Throttle Limits
 
-    static let maxSpeedMps: Float = 0.5
-    static let minSpeedMps: Float = -0.3
+    static let maxThrottle: Float = 1.0
+    static let minThrottle: Float = -1.0
 
     // MARK: - State
 
@@ -59,20 +59,16 @@ final class SelfDrivingViewModel: ObservableObject {
 
         isStarted = true
 
-        controlLoopSub = poseModel.$currentPose
-            .compactMap { $0 }
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in
-                self?.runControlLoop()
-            }
+        poseModel.onFrameUpdate = { [weak self] pose, depth, speed in
+            self?.runControlLoop(pose: pose, depth: depth, speed: speed)
+        }
     }
 
     func stop() {
         isStarted = false
         isAutonomous = false
 
-        controlLoopSub?.cancel()
-        controlLoopSub = nil
+        poseModel.onFrameUpdate = nil
 
         poseModel.stop()
 
@@ -82,7 +78,7 @@ final class SelfDrivingViewModel: ObservableObject {
     func toggleAutonomous() {
         isAutonomous.toggle()
         if isAutonomous {
-            orchestrator.setGoal(.constantSpeed(targetMps: targetSpeedMps))
+            orchestrator.setGoal(.constantThrottle(targetThrottle: targetThrottle))
         } else {
             orchestrator.reset()
             waypoints = []
@@ -92,24 +88,23 @@ final class SelfDrivingViewModel: ObservableObject {
 
     // MARK: - Control Loop
 
-    private func runControlLoop() {
+    private func runControlLoop(pose: PoseEntry, depth: Float?, speed: Double?) {
         guard isStarted && isAutonomous else { return }
-        guard let pose = poseModel.currentPose else { return }
 
         let motorSpeed: Double? = {
             guard let tel = escManager.telemetry, tel.speedMps > 0.01 else { return nil }
             return tel.speedMps
         }()
         let arkitSpeed: Double? = {
-            let s = poseModel.arkitSpeedMps
-            return s > 0.01 ? s : nil
+            if let s = speed, s > 0.01 { return s }
+            return nil
         }()
 
         let context = PlannerContext(
             pose: pose,
-            currentThrottle: throttle,
+            currentThrottle: self.throttle,
             escTelemetry: escManager.telemetry,
-            forwardDepth: poseModel.forwardDepth,
+            forwardDepth: depth,
             motorSpeedMps: motorSpeed,
             arkitSpeedMps: arkitSpeed,
             timestamp: pose.timestamp
@@ -117,10 +112,12 @@ final class SelfDrivingViewModel: ObservableObject {
 
         let command = orchestrator.tick(context: context)
 
-        self.steering = command.steering
-        self.throttle = command.throttle
-
         sendActuatorCommands(steering: command.steering, throttle: command.throttle)
+
+        DispatchQueue.main.async {
+            self.steering = command.steering
+            self.throttle = command.throttle
+        }
     }
 
     // MARK: - Helpers

@@ -137,6 +137,20 @@ struct SelfDrivingView: View {
                 
                 Divider().frame(height: 16)
                 
+                // Map Status
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(mapStatusColor)
+                        .frame(width: 8, height: 8)
+                    Text("Map")
+                        .font(.caption.bold())
+                    Text(mapStatusText)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                Divider().frame(height: 16)
+                
                 // ESC Status
                 HStack(spacing: 6) {
                     Circle()
@@ -190,6 +204,53 @@ struct SelfDrivingView: View {
         }
     }
     
+    private var mapStatusColor: Color {
+        switch viewModel.poseModel.worldMappingStatus {
+        case .mapped: return .green
+        case .extending: return .blue
+        case .limited: return .orange
+        case .notAvailable: return .red
+        @unknown default: return .gray
+        }
+    }
+    
+    private var mapStatusText: String {
+        switch viewModel.poseModel.worldMappingStatus {
+        case .mapped: return "Mapped"
+        case .extending: return "Extending"
+        case .limited: return "Limited"
+        case .notAvailable: return "N/A"
+        @unknown default: return "Unknown"
+        }
+    }
+
+    // MARK: - Safety Status Helpers
+
+    private var safetyLabelColor: Color {
+        switch viewModel.orchestrator.supervisorState {
+        case .clear: return .secondary
+        case .caution: return .orange
+        case .brake: return .red
+        }
+    }
+
+    private var safetyStatusText: String {
+        switch viewModel.orchestrator.supervisorState {
+        case .clear: return "CLEAR"
+        case .caution: return "CAUTION"
+        case .brake: return "BRAKE"
+        }
+    }
+
+    private var safetyOverlayColor: Color {
+        switch viewModel.orchestrator.supervisorState {
+        case .clear: return .clear
+        case .caution: return Color.orange.opacity(0.12)
+        case .brake: return Color.red.opacity(0.15)
+        }
+    }
+
+    
     private func bottomHUD(leftPad: CGFloat, rightPad: CGFloat, bottomPad: CGFloat) -> some View {
         HStack(alignment: .bottom, spacing: 20) {
             // LEFT: Telemetry
@@ -224,18 +285,24 @@ struct SelfDrivingView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("SAFETY")
                     .font(.caption2.bold())
-                    .foregroundColor(viewModel.orchestrator.isOverridden ? .red : .secondary)
+                    .foregroundColor(safetyLabelColor)
                 MetricRow(
                     label: "Depth",
                     value: viewModel.poseModel.forwardDepth.map { String(format: "%.2f m", $0) } ?? "—"
                 )
+                if let event = viewModel.orchestrator.lastSupervisorEvent {
+                    MetricRow(
+                        label: "Filt",
+                        value: String(format: "%.2f m", event.filteredDepth)
+                    )
+                }
                 MetricRow(
                     label: "TTC",
                     value: viewModel.orchestrator.lastSupervisorEvent.map { String(format: "%.2f s", $0.ttc) } ?? "—"
                 )
                 MetricRow(
                     label: "Status",
-                    value: viewModel.orchestrator.isOverridden ? "BRAKE" : "OK"
+                    value: safetyStatusText
                 )
             }
             .padding(12)
@@ -243,31 +310,31 @@ struct SelfDrivingView: View {
             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(viewModel.orchestrator.isOverridden ? Color.red.opacity(0.15) : Color.clear)
+                    .fill(safetyOverlayColor)
             )
 
-            // SPEED TARGET
+            // THROTTLE TARGET
             VStack(alignment: .leading, spacing: 6) {
-                Text("TARGET SPEED")
+                Text("TARGET THROTTLE")
                     .font(.caption2.bold())
                     .foregroundColor(.secondary)
-                Text(String(format: "%.2f m/s", viewModel.targetSpeedMps))
+                Text(String(format: "%.1f", viewModel.targetThrottle))
                     .font(.caption.bold().monospacedDigit())
                     .foregroundColor(.cyan)
                 Slider(
-                    value: $viewModel.targetSpeedMps,
-                    in: SelfDrivingViewModel.minSpeedMps...SelfDrivingViewModel.maxSpeedMps,
-                    step: 0.05
+                    value: $viewModel.targetThrottle,
+                    in: SelfDrivingViewModel.minThrottle...SelfDrivingViewModel.maxThrottle,
+                    step: 0.1
                 )
                 .tint(.cyan)
                 HStack {
-                    Text(String(format: "%.1f", SelfDrivingViewModel.minSpeedMps))
+                    Text(String(format: "%.1f", SelfDrivingViewModel.minThrottle))
                         .font(.caption2).foregroundColor(.secondary)
                     Spacer()
                     Text("0")
                         .font(.caption2).foregroundColor(.secondary)
                     Spacer()
-                    Text(String(format: "%.1f", SelfDrivingViewModel.maxSpeedMps))
+                    Text(String(format: "%.1f", SelfDrivingViewModel.maxThrottle))
                         .font(.caption2).foregroundColor(.secondary)
                 }
             }
@@ -325,7 +392,7 @@ struct SelfDrivingView: View {
                     Text("EMERGENCY BRAKE")
                         .font(.title2.bold())
                     if let event = viewModel.orchestrator.lastSupervisorEvent {
-                        Text(String(format: "TTC: %.2fs  |  Depth: %.2fm", event.ttc, event.forwardDepth))
+                        Text(String(format: "TTC: %.2fs  |  Depth: %.2fm (filt: %.2fm)", event.ttc, event.forwardDepth, event.filteredDepth))
                             .font(.caption.monospacedDigit())
                     }
                 }
@@ -384,4 +451,3 @@ struct SelfDrivingView: View {
         }
     }
 }
-

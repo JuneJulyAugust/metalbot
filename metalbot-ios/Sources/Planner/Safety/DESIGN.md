@@ -1,81 +1,161 @@
-# Safety Supervisor — Design v0.1
+# Safety Supervisor — Design v0.3
 
-**Status:** Design (pre-implementation)
-**Date:** 2026-03-29
+**Status:** Implemented
+**Date:** 2026-03-31
 
 ---
 
 ## 1. Purpose
 
-The `SafetySupervisor` sits between the planner output and the actuators. If the forward path is blocked, it overrides the planner command with a brake. The planner and UI are notified.
+The `SafetySupervisor` sits between the planner output and the actuators. If the forward path is threatened, it either scales back throttle (CAUTION) or fully stops the robot (BRAKE). The planner and UI are notified of the current safety state.
 
 ---
 
-## 2. Time-to-Collision (TTC)
+## 2. Root-Cause Analysis (from v0.2)
 
-Sample **one depth value** from the LiDAR depth map: the pixel closest to the camera's optical center (y=0, z=0 in camera frame — i.e., the center pixel of the depth image). This is the depth directly ahead.
+The v0.2 binary PASS/BRAKE design caused stop-go oscillation due to three interacting failure modes:
+
+1. **Binary Brake Policy:** The system oscillated at the threshold boundary because there were only two output states — full throttle or zero throttle.
+2. **Speed-Dependent Threshold + Instant Brake:** When the supervisor braked, speed dropped, which shrank the threshold, which released the brake, which raised speed, which expanded the threshold, which triggered the brake — a positive feedback loop. The hysteresis couldn't fix this because the threshold itself was moving.
+3. **Unfiltered Depth:** Frame-to-frame LiDAR noise triggered the full brake/release cycle even without real obstacle motion.
+
+---
+
+## 3. Safety Policy: Tri-Zone State Machine
+
+### Design Principles
+
+1. **Never allow speed changes to contradict the safety decision that caused them.** A brake triggered at speed `v` must remain in effect until the obstacle distance *genuinely improves*, not until speed drops enough to shrink the threshold.
+2. **Smooth commands prevent mechanical oscillation.** The output space must be continuous, not binary. Transitions from full-speed to full-stop pass through intermediate throttle levels.
+3. **Sensor noise must be filtered temporally, not just spatially.** Decisions are based on a smoothed depth signal.
+
+### Three Zones
+
+| Zone        | Condition                                  | Action                          |
+|-------------|--------------------------------------------|---------------------------------|
+| **CLEAR**   | `filteredDepth > clearDistance`             | Pass command unchanged          |
+| **CAUTION** | `brakeDistance ≤ filteredDepth ≤ clearDistance` | Scale throttle linearly to 0 |
+| **BRAKE**   | `filteredDepth < brakeDistance`             | Full stop                       |
+
+### Zone Boundaries
+
+Each boundary is the maximum of three components:
+
+**Brake Distance:**
+```
+d_brake = max(minBrakeDistanceM, speed × ttcBrakeS, speed² / (2 × maxDeceleration))
+```
+
+**Clear Distance:**
+```
+d_clear = max(minCautionDistanceM, speed × ttcCautionS, speed² / (2 × maxDeceleration))
+```
+
+### Latched Speed
+
+When the supervisor detects a threat (transitions from CLEAR to CAUTION or BRAKE), it **latches the current speed**. All subsequent threshold calculations use `max(latchedSpeed, currentSpeed)` until the state returns to CLEAR.
+
+This prevents the self-contradicting feedback loop: braking reduces speed, but the threshold remains computed from the speed at threat onset.
+
+### Cooldown Timers
+
+- BRAKE must persist for at least `minBrakeDurationS` (0.5s) before transitioning to CAUTION.
+- CAUTION must persist for at least `minCautionDurationS` (0.3s) before transitioning to CLEAR.
+- BRAKE always transitions through CAUTION (never directly to CLEAR).
+
+### State Transition Diagram
 
 ```
-d_forward = depthMap[cy, cx]     // center pixel, meters
-v_eff     = |throttle| * MAX_SPEED_PROXY_MPS
-TTC       = d_forward / max(v_eff, ε)
+                     depth ≥ clearDist AND cooldown expired
+               ┌──────────────────────────────────────────┐
+               │                                          │
+    ┌──────────▼──────────┐    depth < clearDist    ┌─────┴──────────┐
+    │       CLEAR         │───────────────────────▶│    CAUTION     │
+    │  (pass unchanged)   │                        │ (scale throttle)│
+    └─────────────────────┘                        └───────┬────────┘
+                                                           │
+                                            depth < brakeDist
+                                                           │
+                                                  ┌────────▼────────┐
+                                                  │     BRAKE       │
+                                                  │ (full stop)     │
+                                                  └─────────────────┘
+                                                   exit: cooldown ≥ 0.5s
+                                                   → CAUTION → CLEAR
 ```
+
+---
+
+## 4. Depth Filtering (Asymmetric EMA)
+
+Raw LiDAR depth is smoothed with an Exponential Moving Average:
+
+```
+filteredDepth = α × rawDepth + (1 - α) × filteredDepth_prev
+```
+
+The alpha is **asymmetric for safety**:
+- **Approaching** (rawDepth < filtered): `α = 0.5` — react faster to closing obstacles.
+- **Receding** (rawDepth > filtered): `α = 0.3` — slower release prevents premature brake release from noise.
+
+---
+
+## 5. CAUTION Zone Throttle Scaling
+
+In the CAUTION zone, throttle is linearly interpolated between zero and the planner's requested value:
+
+```
+scale = (filteredDepth - brakeDistance) / (clearDistance - brakeDistance)
+outputThrottle = plannerThrottle × clamp(scale, 0, 1)
+```
+
+This creates a smooth deceleration ramp instead of a binary snap.
+
+---
+
+## 6. Configuration
 
 | Parameter | Default | Meaning |
-|---|---|---|
-| `MAX_SPEED_PROXY_MPS` | `1.0` | Estimated top speed at throttle=1.0 (placeholder until calibration) |
-| `TTC_CRITICAL_S` | `1.0` | Below this → brake unconditionally |
-| `ε` | `0.01` | Avoid division by zero at standstill |
+|-----------|---------|---------|
+| `fallbackSpeedMPS` | `0.3` | Conservative speed when sensors unavailable |
+| `ttcBrakeS` | `1.5` | TTC threshold for BRAKE zone |
+| `ttcCautionS` | `2.5` | TTC threshold for CAUTION zone |
+| `minBrakeDistanceM` | `0.3` | Absolute minimum BRAKE distance |
+| `minCautionDistanceM` | `0.5` | Absolute minimum CAUTION distance |
+| `maxDecelerationMPS2` | `0.5` | Max braking deceleration (m/s²) |
+| `minBrakeDurationS` | `0.5` | Min time in BRAKE before CAUTION |
+| `minCautionDurationS` | `0.3` | Min time in CAUTION before CLEAR |
+| `depthEmaAlphaApproaching` | `0.5` | EMA alpha when obstacle approaching |
+| `depthEmaAlphaReceding` | `0.3` | EMA alpha when obstacle receding |
+| `minSpeedEpsilonMPS` | `0.01` | Division-by-zero guard |
 
 ---
 
-## 3. Decision Logic
-
-```
-supervise(command, context):
-  if depthMap is nil:       return command   // no sensor → pass through
-  if command.throttle <= 0: return command   // not moving forward → pass through
-
-  d_forward = centerDepth(depthMap)
-  if d_forward is NaN or 0: return command   // invalid reading
-
-  v_eff = command.throttle * MAX_SPEED_PROXY_MPS
-  ttc   = d_forward / max(v_eff, ε)
-
-  if ttc < TTC_CRITICAL_S:
-      return .brake(reason: "TTC \(ttc)s, d=\(d_forward)m")
-
-  return command
-```
-
-One threshold, one action: brake or pass through.
-
----
-
-## 4. `SafetySupervisorEvent`
+## 7. `SafetySupervisorEvent`
 
 ```swift
-struct SafetySupervisorEvent {
+struct SafetySupervisorEvent: Equatable {
     let timestamp: TimeInterval
     let ttc: Float
-    let forwardDepth: Float
-    let action: Action
+    let forwardDepth: Float     // raw depth
+    let filteredDepth: Float    // EMA-smoothed depth
 
-    enum Action {
+    enum Action: Equatable {
         case clear
+        case caution(throttleScale: Float, reason: String)
         case brakeApplied(String)
     }
+
+    let action: Action
 }
 ```
 
 ---
 
-## 5. Extensibility
+## 8. Extensibility
 
-This is the simplest viable supervisor. Future versions can:
+Future versions can:
 - Sample a forward cone instead of one pixel
-- Add a warning threshold with throttle capping
-- Use true velocity (m/s) once wheel radius is calibrated
-- Incorporate lateral obstacles for steering constraints
-
-Each extension modifies `SafetySupervisor` internals only. The `supervise(command, context) → ControlCommand` interface does not change.
+- Add lateral obstacle detection for steering constraints
+- Add speed-adaptive EMA alpha (faster filtering at higher speeds)
+- Log full state machine trace for offline analysis

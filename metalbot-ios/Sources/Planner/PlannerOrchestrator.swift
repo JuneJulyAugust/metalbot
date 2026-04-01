@@ -14,7 +14,12 @@ final class PlannerOrchestrator: ObservableObject {
 
     @Published private(set) var lastCommand: ControlCommand = .neutral
     @Published private(set) var lastSupervisorEvent: SafetySupervisorEvent?
+
+    /// True when the supervisor is in full-stop BRAKE state (triggers alarm + overlay in UI).
     @Published private(set) var isOverridden: Bool = false
+
+    /// Current safety supervisor state for richer UI feedback.
+    @Published private(set) var supervisorState: SafetySupervisorState = .clear
 
     // MARK: - Init
 
@@ -38,7 +43,15 @@ final class PlannerOrchestrator: ObservableObject {
 
         lastCommand = safeCommand
         lastSupervisorEvent = supervisor.lastEvent
-        isOverridden = safeCommand.source == .safetySupervisor
+        supervisorState = supervisor.state
+
+        // isOverridden = true only for full-stop BRAKE, not CAUTION throttle scaling.
+        // This preserves existing UI alarm behavior.
+        if case .brake = supervisor.state {
+            isOverridden = true
+        } else {
+            isOverridden = false
+        }
 
         return safeCommand
     }
@@ -55,5 +68,6 @@ final class PlannerOrchestrator: ObservableObject {
         lastCommand = .neutral
         lastSupervisorEvent = nil
         isOverridden = false
+        supervisorState = .clear
     }
 }

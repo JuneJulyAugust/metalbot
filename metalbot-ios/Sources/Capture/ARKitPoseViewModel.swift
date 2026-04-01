@@ -54,6 +54,7 @@ final class ARKitPoseViewModel: NSObject, ObservableObject, ARSessionDelegate {
     @Published var trackingState: ARCamera.TrackingState = .notAvailable
     @Published var trackingReason: String = ""
     @Published var isUsingSceneDepth: Bool = false
+    @Published var worldMappingStatus: ARFrame.WorldMappingStatus = .notAvailable
 
     /// Center-pixel LiDAR depth in meters (nil if depth unavailable).
     @Published var forwardDepth: Float?
@@ -100,7 +101,11 @@ final class ARKitPoseViewModel: NSObject, ObservableObject, ARSessionDelegate {
     private var velocityEstimator = ARKitVelocityEstimator()
 
     /// Dedicated high-priority queue for ARSession delegate callbacks.
-    private let frameQueue = DispatchQueue(label: "com.metalbot.arkit.pose", qos: .userInitiated)
+    private let frameQueue = DispatchQueue(label: "com.metalbot.arkit.pose", qos: .userInteractive)
+
+    /// High-priority callback fired directly on the ARKit frame queue.
+    /// Use this for control loops to avoid main-thread latency.
+    var onFrameUpdate: ((PoseEntry, Float?, Double?) -> Void)?
 
     /// Directory for storing world maps.
     private var mapsDirectory: URL {
@@ -473,13 +478,20 @@ final class ARKitPoseViewModel: NSObject, ObservableObject, ARSessionDelegate {
             hz = 0
         }
 
+        let speed = self.velocityEstimator.update(x: robotX, z: robotZ, timestamp: timestamp)
+        
+        let mappingStatus = frame.worldMappingStatus
+        
+        onFrameUpdate?(entry, centerDepth, speed)
+
         DispatchQueue.main.async {
             self.currentPose = entry
             self.poseHz = hz
             self.trackingState = state
+            self.worldMappingStatus = mappingStatus
             self.isUsingSceneDepth = hasDepth
             self.forwardDepth = centerDepth
-            if let speed = self.velocityEstimator.update(x: robotX, z: robotZ, timestamp: timestamp) {
+            if let speed = speed {
                 self.arkitSpeedMps = speed
             }
 

@@ -41,7 +41,7 @@ final class WaypointPlanner: PlannerProtocol {
         case .followWaypoints(let wps, let throttle):
             waypoints = wps
             maxThrottle = throttle
-        case .constantSpeed:
+        case .constantThrottle:
             break // Not handled by WaypointPlanner
         }
     }

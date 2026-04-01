@@ -17,7 +17,7 @@ struct Waypoint {
 enum PlannerGoal {
     case idle
     case followWaypoints([Waypoint], maxThrottle: Float)
-    case constantSpeed(targetMps: Float)
+    case constantThrottle(targetThrottle: Float)
 }
 
 /// Extensibility contract for all planners.
