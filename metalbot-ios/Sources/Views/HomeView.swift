@@ -176,6 +176,16 @@ struct DiagnosticsView: View {
                     destination: RaspberryPiControlView()
                 )
             }
+
+            Section("Agent") {
+                diagRow(
+                    title: "Agent Diagnostics",
+                    subtitle: "Telegram bot & command pipeline",
+                    icon: "bubble.left.and.bubble.right.fill",
+                    color: .teal,
+                    destination: AgentDebugView()
+                )
+            }
         }
         .navigationTitle("Diagnostics")
     }
