@@ -226,6 +226,18 @@ struct SelfDrivingView: View {
 
     // MARK: - Safety Status Helpers
 
+    private func snapshotText(_ s: SafetyTriggerSnapshot) -> String {
+        let motor = s.motorSpeed.isNaN ? "—" : String(format: "%.2f", s.motorSpeed)
+        let arkit = s.arkitSpeed.isNaN ? "—" : String(format: "%.2f", s.arkitSpeed)
+        return String(format: "%.2fm M%@ A%@", s.depth, motor, arkit)
+    }
+
+    private func snapshotFullText(_ label: String, _ s: SafetyTriggerSnapshot) -> String {
+        let motor = s.motorSpeed.isNaN ? "—" : String(format: "%.2f m/s", s.motorSpeed)
+        let arkit = s.arkitSpeed.isNaN ? "—" : String(format: "%.2f m/s", s.arkitSpeed)
+        return "\(label) triggered | Depth: \(String(format: "%.2f", s.depth))m | Motor: \(motor) | ARKit: \(arkit)"
+    }
+
     private var safetyLabelColor: Color {
         switch viewModel.orchestrator.supervisorState {
         case .clear: return .secondary
@@ -304,9 +316,16 @@ struct SelfDrivingView: View {
                     label: "Status",
                     value: safetyStatusText
                 )
+                if let s = viewModel.orchestrator.cautionSnapshot {
+                    Divider()
+                    MetricRow(label: "Caut@", value: snapshotText(s))
+                }
+                if let s = viewModel.orchestrator.brakeSnapshot {
+                    MetricRow(label: "Brk@", value: snapshotText(s))
+                }
             }
             .padding(12)
-            .frame(width: 140)
+            .frame(width: 160)
             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
@@ -393,6 +412,15 @@ struct SelfDrivingView: View {
                         .font(.title2.bold())
                     if let event = viewModel.orchestrator.lastSupervisorEvent {
                         Text(String(format: "TTC: %.2fs  |  Depth: %.2fm (filt: %.2fm)", event.ttc, event.forwardDepth, event.filteredDepth))
+                            .font(.caption.monospacedDigit())
+                    }
+                    Divider().background(Color.white.opacity(0.4))
+                    if let s = viewModel.orchestrator.cautionSnapshot {
+                        Text(snapshotFullText("Caution", s))
+                            .font(.caption.monospacedDigit())
+                    }
+                    if let s = viewModel.orchestrator.brakeSnapshot {
+                        Text(snapshotFullText("Brake", s))
                             .font(.caption.monospacedDigit())
                     }
                 }

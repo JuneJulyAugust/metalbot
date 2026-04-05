@@ -21,6 +21,12 @@ final class PlannerOrchestrator: ObservableObject {
     /// Current safety supervisor state for richer UI feedback.
     @Published private(set) var supervisorState: SafetySupervisorState = .clear
 
+    /// Depth and speed at the frame CAUTION was first triggered this threat event.
+    @Published private(set) var cautionSnapshot: SafetyTriggerSnapshot?
+
+    /// Depth and speed at the frame BRAKE was first triggered this threat event.
+    @Published private(set) var brakeSnapshot: SafetyTriggerSnapshot?
+
     // MARK: - Init
 
     init(planner: any PlannerProtocol) {
@@ -44,6 +50,8 @@ final class PlannerOrchestrator: ObservableObject {
         lastCommand = safeCommand
         lastSupervisorEvent = supervisor.lastEvent
         supervisorState = supervisor.state
+        cautionSnapshot = supervisor.cautionSnapshot
+        brakeSnapshot = supervisor.brakeSnapshot
 
         // isOverridden = true only for full-stop BRAKE, not CAUTION throttle scaling.
         // This preserves existing UI alarm behavior.
@@ -69,5 +77,7 @@ final class PlannerOrchestrator: ObservableObject {
         lastSupervisorEvent = nil
         isOverridden = false
         supervisorState = .clear
+        cautionSnapshot = nil
+        brakeSnapshot = nil
     }
 }

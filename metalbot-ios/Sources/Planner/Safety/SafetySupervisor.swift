@@ -48,6 +48,15 @@ struct SafetySupervisorConfig {
     var minSpeedEpsilonMPS: Float = 0.01
 }
 
+// MARK: - Trigger Snapshot
+
+/// Depth and speeds captured at the exact frame a state transition was triggered.
+struct SafetyTriggerSnapshot {
+    let depth: Float        // EMA-filtered depth at trigger moment (m)
+    let motorSpeed: Float   // motor-derived speed at trigger moment (m/s), NaN if unavailable
+    let arkitSpeed: Float   // ARKit-derived speed at trigger moment (m/s), NaN if unavailable
+}
+
 // MARK: - Internal State
 
 /// The three-zone safety state machine.
@@ -102,6 +111,16 @@ final class SafetySupervisor {
     /// EMA-filtered depth. Nil until the first valid reading.
     private var filteredDepth: Float?
 
+    // MARK: - Trigger Snapshots
+
+    /// Depth and speed at the frame CAUTION was first triggered (CLEAR → CAUTION).
+    /// Cleared when returning to CLEAR.
+    private(set) var cautionSnapshot: SafetyTriggerSnapshot?
+
+    /// Depth and speed at the frame BRAKE was first triggered (any → BRAKE).
+    /// Cleared when returning to CLEAR.
+    private(set) var brakeSnapshot: SafetyTriggerSnapshot?
+
     init(config: SafetySupervisorConfig = .init()) {
         self.config = config
     }
@@ -145,6 +164,31 @@ final class SafetySupervisor {
             latchedSpeed = speed
             playAlertBeepAsync()
         }
+
+        // Capture trigger snapshots at the exact transition frame.
+        let enteredCaution: Bool
+        let enteredBrake: Bool
+        let returning: Bool
+
+        switch (state, newState) {
+        case (.clear, .caution):    enteredCaution = true;  enteredBrake = false; returning = false
+        case (.clear, .brake):      enteredCaution = false; enteredBrake = true;  returning = false
+        case (.caution, .brake):    enteredCaution = false; enteredBrake = true;  returning = false
+        case (.caution, .clear):    enteredCaution = false; enteredBrake = false; returning = true
+        case (.brake, .clear):      enteredCaution = false; enteredBrake = false; returning = true
+        default:                    enteredCaution = false; enteredBrake = false; returning = false
+        }
+
+        let makeSnapshot = {
+            SafetyTriggerSnapshot(
+                depth: smoothedDepth,
+                motorSpeed: Float(context.motorSpeedMps ?? Double.nan),
+                arkitSpeed: Float(context.arkitSpeedMps ?? Double.nan)
+            )
+        }
+        if enteredCaution { cautionSnapshot = makeSnapshot() }
+        if enteredBrake   { brakeSnapshot = makeSnapshot() }
+        if returning      { cautionSnapshot = nil; brakeSnapshot = nil }
 
         state = newState
 
@@ -199,6 +243,8 @@ final class SafetySupervisor {
         state = .clear
         latchedSpeed = 0
         filteredDepth = nil
+        cautionSnapshot = nil
+        brakeSnapshot = nil
     }
 
     // MARK: - Zone Boundaries
@@ -337,6 +383,8 @@ final class SafetySupervisor {
         if state != .clear {
             state = .clear
             latchedSpeed = 0
+            cautionSnapshot = nil
+            brakeSnapshot = nil
         }
         // Still update depth filter for continuity.
         if let raw = validDepth(from: context) {
