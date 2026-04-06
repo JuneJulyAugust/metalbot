@@ -43,7 +43,8 @@ struct TelegramUpdate: Decodable {
 
 struct TelegramUpdateResponse: Decodable {
     let ok: Bool
-    let result: [TelegramUpdate]
+    let result: [TelegramUpdate]?          // nil on error responses
+    let description: String?               // Telegram error description (e.g. "Unauthorized")
 }
 
 // MARK: - App-level message model
@@ -78,6 +79,10 @@ final class TelegramGateway: ObservableObject {
     @Published var pollCount: Int = 0
     @Published var lastPollTime: Date?
     @Published var lastError: String?
+
+    /// Most recent chat ID seen, even if not yet whitelisted. Shown in UI for easy approval.
+    @Published var lastSeenChatId: Int64?
+    @Published var lastSeenUsername: String?
 
     var allowedChatIds: Set<Int64> = []
 
@@ -130,6 +135,12 @@ final class TelegramGateway: ObservableObject {
                     guard let apiMessage = update.message else { continue }
                     let message = TelegramMessage(from: apiMessage)
 
+                    // Always record the last seen chat ID — useful for first-time whitelist setup.
+                    await MainActor.run {
+                        self.lastSeenChatId = message.chatId
+                        self.lastSeenUsername = message.fromUsername
+                    }
+
                     guard isChatAllowed(message.chatId) else { continue }
 
                     await MainActor.run {
@@ -163,7 +174,12 @@ final class TelegramGateway: ObservableObject {
         }
         let (data, _) = try await session.data(from: url)
         let response = try JSONDecoder().decode(TelegramUpdateResponse.self, from: data)
-        return response.result
+        guard response.ok, let updates = response.result else {
+            let desc = response.description ?? "Unknown Telegram error"
+            throw NSError(domain: "TelegramGateway", code: 0,
+                          userInfo: [NSLocalizedDescriptionKey: desc])
+        }
+        return updates
     }
 
     // MARK: - Send Reply

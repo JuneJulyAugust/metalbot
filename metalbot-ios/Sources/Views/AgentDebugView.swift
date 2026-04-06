@@ -89,6 +89,28 @@ struct AgentDebugView: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
+            if let seenId = gateway.lastSeenChatId,
+               !gateway.allowedChatIds.contains(seenId) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Seen chat ID: \(seenId)")
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundColor(.orange)
+                        if let username = gateway.lastSeenUsername {
+                            Text("@\(username)")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    Spacer()
+                    Button("Allow") {
+                        gateway.allowedChatIds.insert(seenId)
+                        saveChatIds()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                }
+            }
         }
     }
 
