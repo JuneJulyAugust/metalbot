@@ -22,9 +22,10 @@ final class TelegramGatewayTests: XCTestCase {
 
         let response = try JSONDecoder().decode(TelegramUpdateResponse.self, from: json)
         XCTAssertTrue(response.ok)
-        XCTAssertEqual(response.result.count, 1)
+        let result = try XCTUnwrap(response.result)
+        XCTAssertEqual(result.count, 1)
 
-        let update = response.result[0]
+        let update = result[0]
         XCTAssertEqual(update.updateId, 100)
         XCTAssertEqual(update.message?.text, "/forward")
         XCTAssertEqual(update.message?.chat.id, 789)
@@ -38,7 +39,7 @@ final class TelegramGatewayTests: XCTestCase {
 
         let response = try JSONDecoder().decode(TelegramUpdateResponse.self, from: json)
         XCTAssertTrue(response.ok)
-        XCTAssertTrue(response.result.isEmpty)
+        XCTAssertTrue(try XCTUnwrap(response.result).isEmpty)
     }
 
     func testParseUpdateWithoutMessage() throws {
@@ -47,8 +48,9 @@ final class TelegramGatewayTests: XCTestCase {
         """.data(using: .utf8)!
 
         let response = try JSONDecoder().decode(TelegramUpdateResponse.self, from: json)
-        XCTAssertEqual(response.result.count, 1)
-        XCTAssertNil(response.result[0].message)
+        let result = try XCTUnwrap(response.result)
+        XCTAssertEqual(result.count, 1)
+        XCTAssertNil(result[0].message)
     }
 
     func testTelegramMessageConversion() {

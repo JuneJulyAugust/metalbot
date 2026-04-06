@@ -13,7 +13,14 @@ final class SelfDrivingViewModel: ObservableObject {
 
     // MARK: - Planner
 
-    let orchestrator = PlannerOrchestrator(planner: ConstantSpeedPlanner())
+    let orchestrator: PlannerOrchestrator
+
+    // MARK: - Agent Runtime
+
+    let agentRuntime: AgentRuntime
+    let telegramGateway: TelegramGateway
+    private let speech: SpeechOutput
+    private var gatewayBridge: GatewayBridge?
 
     /// Active waypoints for map overlay (empty for constant speed mode).
     @Published var waypoints: [Waypoint] = []
@@ -41,6 +48,36 @@ final class SelfDrivingViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
 
     init() {
+        let orch = PlannerOrchestrator(planner: ConstantSpeedPlanner())
+        let speechOutput = SpeechOutput()
+
+        let token = KeychainHelper.read(key: "telegram-bot-token") ?? ""
+        let gw = TelegramGateway(token: token)
+        gw.allowedChatIds = {
+            guard let raw = KeychainHelper.read(key: "telegram-allowed-chats") else { return [] }
+            return Set(raw.split(separator: ",").compactMap { Int64($0) })
+        }()
+
+        let dispatcher = ActionDispatcher(
+            goalReceiver: orch,
+            statusProvider: CarStatusProvider()
+        )
+        let rt = AgentRuntime(
+            interpreter: KeywordInterpreter(),
+            dispatcher: dispatcher,
+            responseBuilder: ResponseBuilder(),
+            speech: speechOutput
+        )
+
+        self.orchestrator = orch
+        self.agentRuntime = rt
+        self.telegramGateway = gw
+        self.speech = speechOutput
+
+        let bridge = GatewayBridge(runtime: rt, gateway: gw)
+        self.gatewayBridge = bridge
+        gw.delegate = bridge
+
         setupSubscriptions()
     }
 
@@ -56,6 +93,7 @@ final class SelfDrivingViewModel: ObservableObject {
         poseModel.start()
         escManager.start()
         stm32Manager.start()
+        telegramGateway.startPolling()
 
         isStarted = true
 
@@ -71,6 +109,7 @@ final class SelfDrivingViewModel: ObservableObject {
         poseModel.onFrameUpdate = nil
 
         poseModel.stop()
+        telegramGateway.stopPolling()
 
         resetActuators()
     }
@@ -127,6 +166,8 @@ final class SelfDrivingViewModel: ObservableObject {
         escManager.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
         stm32Manager.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
         orchestrator.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
+        agentRuntime.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
+        telegramGateway.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
     }
 
     private func sendActuatorCommands(steering: Float, throttle: Float) {
@@ -144,5 +185,26 @@ final class SelfDrivingViewModel: ObservableObject {
     private func toPulseWidth(_ normalized: Float) -> Int16 {
         let clamped = max(-1.0, min(1.0, normalized))
         return Int16(1500.0 + clamped * 500.0)
+    }
+}
+
+// MARK: - Car Status Provider
+
+/// Reads live telemetry from BLE singletons to answer /status queries.
+private struct CarStatusProvider: StatusProviding {
+    func currentStatus() -> String {
+        let esc = ESCBleManager.shared
+        let stm32 = STM32BleManager.shared
+        var parts: [String] = []
+
+        if esc.status == .connected, let tel = esc.telemetry {
+            parts.append(String(format: "Speed %.1f m/s, %.1f V, %d RPM", tel.speedMps, tel.voltage, tel.rpm))
+        } else {
+            parts.append("ESC \(esc.status == .connected ? "connected" : "offline")")
+        }
+
+        parts.append("STM32 \(stm32.status == .connected ? "online" : "offline")")
+
+        return parts.joined(separator: " | ")
     }
 }

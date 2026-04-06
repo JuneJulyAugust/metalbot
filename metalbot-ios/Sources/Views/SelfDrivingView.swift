@@ -170,6 +170,23 @@ struct SelfDrivingView: View {
                     Text("STM32")
                         .font(.caption.bold())
                 }
+
+                Divider().frame(height: 16)
+
+                // Agent Status
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(viewModel.telegramGateway.isPolling ? Color.teal : Color.gray)
+                        .frame(width: 8, height: 8)
+                    Text("Agent")
+                        .font(.caption.bold())
+                    if let last = viewModel.agentRuntime.log.last {
+                        Text(last.rawText)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
+                }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
