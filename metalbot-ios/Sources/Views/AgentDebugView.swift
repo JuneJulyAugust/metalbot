@@ -60,16 +60,27 @@ struct AgentDebugView: View {
                     .textFieldStyle(.roundedBorder)
                     .font(.system(.body, design: .monospaced))
                 Button("Set") {
-                    KeychainHelper.save(key: "telegram-bot-token", value: tokenInput)
+                    let trimmed = tokenInput.trimmingCharacters(in: .whitespacesAndNewlines)
+                    KeychainHelper.save(key: "telegram-bot-token", value: trimmed)
                     isTokenSaved = true
                     tokenInput = ""
                 }
                 .disabled(tokenInput.isEmpty)
             }
             if isTokenSaved {
-                Label("Token saved in Keychain", systemImage: "checkmark.shield.fill")
-                    .foregroundColor(.green)
+                HStack {
+                    Label("Token saved in Keychain", systemImage: "checkmark.shield.fill")
+                        .foregroundColor(.green)
+                        .font(.caption)
+                    Spacer()
+                    Button("Reset") {
+                        KeychainHelper.delete(key: "telegram-bot-token")
+                        isTokenSaved = false
+                        gateway.stopPolling()
+                    }
                     .font(.caption)
+                    .foregroundColor(.red)
+                }
             }
             HStack {
                 TextField("Chat ID to allow", text: $chatIdInput)
